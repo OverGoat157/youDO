@@ -18,15 +18,6 @@
 Console UI (ui/)  →  Service (service/)  →  Repository / JDBC (repository/)  →  PostgreSQL
 ```
 
-| Слой | Что делает |
-|---|---|---|
-| UI | меню, безопасный ввод, вывод таблиц; никакого SQL и бизнес-логики |
-| Service | бизнес-правила, поиск/фильтрация/сортировка (Stream API), статистика |
-| Repository | все SQL-запросы, объекты |
-| Model | User, Order, enum UserRole, OrderStatus, OrderCategory |
-| Exceptions | BusinessException, ValidationException, EntityNotFoundException, DatabaseException |
-| Util | DatabaseManager, ExcelExporter, CsvExporter, DbInspector |
-
 ## Предметная модель
 
 - **User** — участник биржи: `id, name, email (unique), role (CUSTOMER | FREELANCER), rating, registeredAt`
