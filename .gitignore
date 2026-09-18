@@ -1,0 +1,15 @@
+# сборка Maven
+target/
+*.class
+*.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# ОС
+.DS_Store
+
+# локальные настройки БД с паролем
+src/main/resources/db.properties
