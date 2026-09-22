@@ -78,6 +78,10 @@ public class CsvExporter implements Exporter {
             return "";
         }
         String text = value.toString();
+        // Русский Excel ждёт дробную часть через запятую: «4.8» он откроет как текст или даже как дату 4 августа
+        if (value instanceof Number) {
+            text = text.replace('.', ',');
+        }
         if (text.contains(SEPARATOR) || text.contains("\"") || text.contains("\n") || text.contains("\r")) {
             return "\"" + text.replace("\"", "\"\"") + "\"";
         }
