@@ -7,6 +7,7 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import ru.mirea.freelance.exception.BusinessException;
 import ru.mirea.freelance.model.Order;
 import ru.mirea.freelance.model.User;
 
@@ -44,7 +45,7 @@ public class ExcelExporter implements Exporter {
                 workbook.write(out);
             }
         } catch (IOException e) {
-            throw new RuntimeException("Не удалось сохранить файл " + path + ": " + e.getMessage(), e);
+            throw new BusinessException("Не удалось сохранить файл " + path + ": " + e.getMessage());
         }
         return List.of(path);
     }

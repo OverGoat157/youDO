@@ -1,5 +1,6 @@
 package ru.mirea.freelance.util;
 
+import ru.mirea.freelance.exception.BusinessException;
 import ru.mirea.freelance.model.Order;
 import ru.mirea.freelance.model.User;
 
@@ -56,7 +57,7 @@ public class CsvExporter implements Exporter {
                 }
             }
         } catch (IOException e) {
-            throw new RuntimeException("Не удалось сохранить файл " + path + ": " + e.getMessage(), e);
+            throw new BusinessException("Не удалось сохранить файл " + path + ": " + e.getMessage());
         }
         return path;
     }
