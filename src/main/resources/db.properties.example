@@ -1,0 +1,4 @@
+# Скопируйте в db.properties (рядом) и укажите свои настройки. db.properties в git не попадает.
+db.url=jdbc:postgresql://localhost:5432/youdo
+db.user=youdo
+db.password=youdo
