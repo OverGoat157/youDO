@@ -1,0 +1,21 @@
+Table users {
+  id            bigserial    [pk]
+  name          varchar(100) [not null]
+  email         varchar(150) [not null, unique]
+  role          varchar(20)  [not null, note: 'CUSTOMER | FREELANCER']
+  rating        numeric(3,2) [not null, default: 0, note: '0..5']
+  registered_at date         [not null, default: `CURRENT_DATE`]
+}
+
+Table orders {
+  id            bigserial     [pk]
+  title         varchar(150)  [not null]
+  description   text
+  category      varchar(30)   [not null, note: 'DEVELOPMENT | DESIGN | COPYWRITING | MARKETING | OTHER']
+  budget        numeric(12,2) [not null, note: '> 0']
+  deadline      date          [not null]
+  status        varchar(20)   [not null, default: 'OPEN', note: 'OPEN | IN_PROGRESS | ON_REVIEW | COMPLETED | CANCELLED']
+  customer_id   bigint        [not null, ref: > users.id]
+  freelancer_id bigint        [null, ref: > users.id]
+  created_at    timestamp     [not null, default: `now()`]
+}
