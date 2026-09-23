@@ -23,6 +23,7 @@ public class CsvExporter implements Exporter {
 
     @Override
     public List<Path> export(List<User> users, List<Order> orders, Path directory) {
+        // Сначала собираем строки файла в список: первая — заголовки, дальше по одной на пользователя
         List<String> userLines = new ArrayList<>();
         userLines.add(line("ID", "Имя", "Email", "Роль", "Рейтинг", "Дата регистрации"));
         for (User u : users) {
@@ -37,6 +38,7 @@ public class CsvExporter implements Exporter {
                     o.getDeadline(), o.getStatus(), o.getCustomerId(), o.getFreelancerId(), o.getCreatedAt()));
         }
 
+        // Записываем два файла и возвращаем оба пути
         return List.of(
                 write(directory, "users.csv", userLines),
                 write(directory, "orders.csv", orderLines));
@@ -65,8 +67,8 @@ public class CsvExporter implements Exporter {
     /** Собирает одну строку CSV из значений. */
     private String line(Object... values) {
         return Arrays.stream(values)
-                .map(this::escape)
-                .collect(Collectors.joining(SEPARATOR));
+                .map(this::escape)                        // каждое значение → текст для CSV
+                .collect(Collectors.joining(SEPARATOR));  // склеиваем через «;»
     }
 
     /**
@@ -78,12 +80,13 @@ public class CsvExporter implements Exporter {
         if (value == null) {
             return "";
         }
-        String text = value.toString();
+        String text = value.toString();   // дата → 2026-09-22, число → 4.8, enum → OPEN
         // Русский Excel ждёт дробную часть через запятую: «4.8» он откроет как текст или даже как дату 4 августа
         if (value instanceof Number) {
             text = text.replace('.', ',');
         }
         if (text.contains(SEPARATOR) || text.contains("\"") || text.contains("\n") || text.contains("\r")) {
+            // Оборачиваем в кавычки, а кавычки внутри удваиваем: "" — так требует формат CSV
             return "\"" + text.replace("\"", "\"\"") + "\"";
         }
         return text;
