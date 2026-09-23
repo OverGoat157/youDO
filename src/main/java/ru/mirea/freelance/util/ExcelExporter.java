@@ -24,6 +24,7 @@ import java.util.List;
  */
 public class ExcelExporter implements Exporter {
 
+    // Заголовки колонок — первая строка каждого листа
     private static final String[] USER_HEADERS = {
             "ID", "Имя", "Email", "Роль", "Рейтинг", "Дата регистрации"
     };
@@ -34,10 +35,12 @@ public class ExcelExporter implements Exporter {
 
     @Override
     public List<Path> export(List<User> users, List<Order> orders, Path directory) {
+        // Путь к файлу: папка + имя с сегодняшней датой, например export/youdo_export_2026-09-23.xlsx
         Path path = directory.resolve("youdo_export_" + LocalDate.now() + ".xlsx");
         try {
             // В свежем клоне папки export/ может не быть
             Files.createDirectories(directory);
+            // try (...) сам закроет книгу и файл в конце, даже если случится ошибка
             try (Workbook workbook = new XSSFWorkbook();
                  OutputStream out = Files.newOutputStream(path)) {
                 writeUsers(workbook, users);
@@ -45,6 +48,7 @@ public class ExcelExporter implements Exporter {
                 workbook.write(out);
             }
         } catch (IOException e) {
+            // Файл не записался (например, открыт в Excel) — меню поймает BusinessException и покажет текст
             throw new BusinessException("Не удалось сохранить файл " + path + ": " + e.getMessage());
         }
         return List.of(path);
@@ -54,6 +58,7 @@ public class ExcelExporter implements Exporter {
         Sheet sheet = createSheet(workbook, "Пользователи", USER_HEADERS);
         CellStyle dateStyle = dateStyle(workbook, "yyyy-mm-dd");
 
+        // Строка 0 занята заголовками, данные пишем с 1-й
         int rowNumber = 1;
         for (User user : users) {
             Row row = sheet.createRow(rowNumber++);
@@ -61,8 +66,9 @@ public class ExcelExporter implements Exporter {
             row.createCell(1).setCellValue(user.getName());
             row.createCell(2).setCellValue(user.getEmail());
             row.createCell(3).setCellValue(user.getRole().toString());
-            row.createCell(4).setCellValue(user.getRating());
+            row.createCell(4).setCellValue(user.getRating());   // число, а не текст
 
+            // Дату пишем датой и вешаем формат, иначе Excel покажет число
             Cell registeredAt = row.createCell(5);
             registeredAt.setCellValue(user.getRegisteredAt());
             registeredAt.setCellStyle(dateStyle);
