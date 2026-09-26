@@ -13,6 +13,7 @@ import ru.mirea.freelance.repository.UserRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 
 /** Операции с заказами; хранилище передаётся через интерфейс. */
@@ -97,6 +98,69 @@ public class OrderService {
         order.setStatus(next);
         orders.update(order);
         return order;
+    }
+
+    public List<Order> searchByTitle(String part) {
+        if (part == null) {
+            throw new ValidationException("Не задана строка поиска: " + part);
+        }
+        return orders.findByTitleContaining(part);
+    }
+
+    public List<Order> searchByCustomer(Long customerId) {
+        if (customerId == null) {
+            throw new ValidationException("Не задан ID заказчика: " + customerId);
+        }
+        return orders.findByCustomerId(customerId);
+    }
+
+    public List<Order> searchByFreelancer(Long freelancerId) {
+        if (freelancerId == null) {
+            throw new ValidationException("Не задан ID исполнителя: " + freelancerId);
+        }
+        return orders.findByFreelancerId(freelancerId);
+    }
+
+    public List<Order> filterByStatus(OrderStatus status) {
+        if (status == null) {
+            throw new ValidationException("Недопустимый статус: " + status);
+        }
+        return orders.findAll().stream().filter(order -> order.getStatus() == status).toList();
+    }
+
+    public List<Order> filterByCategory(OrderCategory category) {
+        validateCategory(category);
+        return orders.findAll().stream().filter(order -> order.getCategory() == category).toList();
+    }
+
+    public List<Order> filterByBudget(BigDecimal min, BigDecimal max) {
+        if (min == null || max == null || min.compareTo(max) > 0) {
+            throw new ValidationException("Недопустимый диапазон бюджета: " + min + " — " + max);
+        }
+        return orders.findAll().stream()
+                .filter(order -> order.getBudget().compareTo(min) >= 0 && order.getBudget().compareTo(max) <= 0)
+                .toList();
+    }
+
+    public List<Order> filterByDeadline(LocalDate from, LocalDate to) {
+        if (from == null || to == null || from.isAfter(to)) {
+            throw new ValidationException("Недопустимый диапазон дедлайнов: " + from + " — " + to);
+        }
+        return orders.findAll().stream()
+                .filter(order -> !order.getDeadline().isBefore(from) && !order.getDeadline().isAfter(to))
+                .toList();
+    }
+
+    public List<Order> sortBy(OrderSortField field, boolean ascending) {
+        if (field == null) {
+            throw new ValidationException("Недопустимое поле сортировки: " + field);
+        }
+        Comparator<Order> comparator = switch (field) {
+            case BUDGET -> Comparator.comparing(Order::getBudget);
+            case DEADLINE -> Comparator.comparing(Order::getDeadline);
+            case CREATED_AT -> Comparator.comparing(Order::getCreatedAt);
+        };
+        return orders.findAll().stream().sorted(ascending ? comparator : comparator.reversed()).toList();
     }
 
     private User getUser(Long id) {

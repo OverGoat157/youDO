@@ -17,6 +17,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -292,6 +294,138 @@ class OrderServiceTest {
     void assignAndChangeStatus_unknownOrder_throwEntityNotFound() {
         assertThrows(EntityNotFoundException.class, () -> service.assignFreelancer(999L, freelancer.getId()));
         assertThrows(EntityNotFoundException.class, () -> service.changeStatus(999L, OrderStatus.CANCELLED));
+    }
+
+    @Test
+    void searchByTitle_matchesSubstringIgnoringCase() {
+        Order site = service.create("Разработка САЙТА", "", OrderCategory.DEVELOPMENT,
+                BigDecimal.TEN, deadline, customer.getId());
+        createOrder();
+        assertEquals(List.of(site), service.searchByTitle("сайт"));
+        assertTrue(service.searchByTitle("нет совпадений").isEmpty());
+        assertEquals(2, service.searchByTitle("").size());
+    }
+
+    @Test
+    void searchByCustomerAndFreelancer_returnsOnlyMatchingOrders() {
+        Order assigned = createOrder();
+        service.assignFreelancer(assigned.getId(), freelancer.getId());
+        User other = users.save(new User("Другой", "other@example.com", UserRole.CUSTOMER));
+        service.create("Другой заказ", "", OrderCategory.DESIGN, BigDecimal.ONE, deadline, other.getId());
+        assertEquals(List.of(assigned), service.searchByCustomer(customer.getId()));
+        assertEquals(List.of(assigned), service.searchByFreelancer(freelancer.getId()));
+        assertTrue(service.searchByCustomer(999L).isEmpty());
+        assertTrue(service.searchByFreelancer(999L).isEmpty());
+    }
+
+    @Test
+    void search_nullArgument_throwsValidation() {
+        assertThrows(ValidationException.class, () -> service.searchByTitle(null));
+        assertThrows(ValidationException.class, () -> service.searchByCustomer(null));
+        assertThrows(ValidationException.class, () -> service.searchByFreelancer(null));
+    }
+
+    @Test
+    void filterByStatusAndCategory_returnsOnlyMatches() {
+        List<Order> sample = createSearchOrders();
+        assertEquals(List.of(sample.get(1)), service.filterByStatus(OrderStatus.IN_PROGRESS));
+        assertEquals(List.of(sample.get(1)), service.filterByCategory(OrderCategory.DESIGN));
+        assertEquals(Set.of(sample.get(0), sample.get(2)), new HashSet<>(service.filterByCategory(OrderCategory.OTHER)));
+        assertTrue(service.filterByStatus(OrderStatus.CANCELLED).isEmpty());
+        assertTrue(service.filterByCategory(OrderCategory.MARKETING).isEmpty());
+    }
+
+    @Test
+    void filterByBudget_includesBothBoundsRegardlessOfScale() {
+        List<Order> sample = createSearchOrders();
+        assertEquals(Set.of(sample.get(0), sample.get(1)),
+                new HashSet<>(service.filterByBudget(new BigDecimal("10.000"), new BigDecimal("20.00"))));
+        assertEquals(List.of(sample.get(0)), service.filterByBudget(BigDecimal.TEN, new BigDecimal("10.00")));
+        assertTrue(service.filterByBudget(new BigDecimal("11"), new BigDecimal("19")).isEmpty());
+    }
+
+    @Test
+    void filterByDeadline_includesBothBounds() {
+        List<Order> sample = createSearchOrders();
+        LocalDate first = sample.get(0).getDeadline();
+        assertEquals(Set.of(sample.get(0), sample.get(1)),
+                new HashSet<>(service.filterByDeadline(first, first.plusDays(1))));
+        assertEquals(List.of(sample.get(0)), service.filterByDeadline(first, first));
+        assertTrue(service.filterByDeadline(first.plusDays(3), first.plusDays(4)).isEmpty());
+    }
+
+    @Test
+    void filterByBudget_invalidRange_throwsValidation() {
+        ValidationException e = assertThrows(ValidationException.class,
+                () -> service.filterByBudget(BigDecimal.TEN, BigDecimal.ONE));
+        assertTrue(e.getMessage().contains("10 — 1"));
+        assertThrows(ValidationException.class, () -> service.filterByBudget(null, BigDecimal.TEN));
+        assertThrows(ValidationException.class, () -> service.filterByBudget(BigDecimal.ONE, null));
+    }
+
+    @Test
+    void filterByDeadline_invalidRange_throwsValidation() {
+        ValidationException e = assertThrows(ValidationException.class,
+                () -> service.filterByDeadline(deadline.plusDays(1), deadline));
+        assertTrue(e.getMessage().contains(deadline.toString()));
+        assertThrows(ValidationException.class, () -> service.filterByDeadline(null, deadline));
+        assertThrows(ValidationException.class, () -> service.filterByDeadline(deadline, null));
+    }
+
+    @Test
+    void filterOrSort_nullEnum_throwsValidation() {
+        assertThrows(ValidationException.class, () -> service.filterByStatus(null));
+        assertThrows(ValidationException.class, () -> service.filterByCategory(null));
+        assertThrows(ValidationException.class, () -> service.sortBy(null, true));
+    }
+
+    @Test
+    void sortByBudget_ordersNumericallyInBothDirections() {
+        List<Order> sample = createSearchOrders();
+        assertEquals(sample, service.sortBy(OrderSortField.BUDGET, true));
+        assertEquals(List.of(sample.get(2), sample.get(1), sample.get(0)), service.sortBy(OrderSortField.BUDGET, false));
+    }
+
+    @Test
+    void sortByDeadline_usesDeadlineInBothDirections() {
+        List<Order> sample = createSearchOrders();
+        sample.get(0).setDeadline(deadline.plusDays(3));
+        assertEquals(List.of(sample.get(1), sample.get(2), sample.get(0)), service.sortBy(OrderSortField.DEADLINE, true));
+        assertEquals(List.of(sample.get(0), sample.get(2), sample.get(1)), service.sortBy(OrderSortField.DEADLINE, false));
+    }
+
+    @Test
+    void sortByCreatedAt_usesCreationTimeInBothDirections() {
+        List<Order> sample = createSearchOrders();
+        assertEquals(List.of(sample.get(1), sample.get(2), sample.get(0)), service.sortBy(OrderSortField.CREATED_AT, true));
+        assertEquals(List.of(sample.get(0), sample.get(2), sample.get(1)), service.sortBy(OrderSortField.CREATED_AT, false));
+        assertEquals(3, service.findAll().size());
+    }
+
+    @Test
+    void queries_emptyRepository_returnEmptyLists() {
+        assertTrue(service.searchByTitle("заказ").isEmpty());
+        assertTrue(service.filterByStatus(OrderStatus.OPEN).isEmpty());
+        assertTrue(service.filterByCategory(OrderCategory.OTHER).isEmpty());
+        assertTrue(service.filterByBudget(BigDecimal.ZERO, BigDecimal.TEN).isEmpty());
+        assertTrue(service.filterByDeadline(deadline, deadline).isEmpty());
+        for (OrderSortField field : OrderSortField.values()) {
+            assertTrue(service.sortBy(field, true).isEmpty());
+        }
+    }
+
+    private List<Order> createSearchOrders() {
+        Order low = service.create("Первый", "", OrderCategory.OTHER, new BigDecimal("10.00"), deadline, customer.getId());
+        Order mid = service.create("Второй", "", OrderCategory.DESIGN, new BigDecimal("20"), deadline.plusDays(1), customer.getId());
+        Order high = service.create("Третий", "", OrderCategory.OTHER, new BigDecimal("30"), deadline.plusDays(2), customer.getId());
+        service.assignFreelancer(mid.getId(), freelancer.getId());
+        service.changeStatus(mid.getId(), OrderStatus.IN_PROGRESS);
+        high.setStatus(OrderStatus.COMPLETED);
+        LocalDateTime start = LocalDateTime.of(2026, 1, 1, 12, 0);
+        low.setCreatedAt(start.plusHours(2));
+        mid.setCreatedAt(start);
+        high.setCreatedAt(start.plusHours(1));
+        return List.of(low, mid, high);
     }
 
     private Order createOrder() {
