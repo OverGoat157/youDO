@@ -1,5 +1,10 @@
 package ru.mirea.freelance.model;
 
+import ru.mirea.freelance.exception.ValidationException;
+
+import java.util.Arrays;
+import java.util.Locale;
+
 /**
  * Статус заказа и допустимые переходы между статусами:
  * OPEN → IN_PROGRESS → ON_REVIEW → COMPLETED,
@@ -12,6 +17,15 @@ public enum OrderStatus {
     ON_REVIEW,
     COMPLETED,
     CANCELLED;
+
+    public static OrderStatus fromString(String s) {
+        try {
+            return valueOf(s.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException | NullPointerException e) {
+            throw new ValidationException("Недопустимое значение: " + s
+                    + ". Допустимые: " + Arrays.toString(values()));
+        }
+    }
 
     /** Разрешён ли переход из текущего статуса в next. */
     public boolean canTransitionTo(OrderStatus next) {
