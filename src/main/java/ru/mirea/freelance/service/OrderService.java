@@ -5,6 +5,7 @@ import ru.mirea.freelance.exception.EntityNotFoundException;
 import ru.mirea.freelance.exception.ValidationException;
 import ru.mirea.freelance.model.Order;
 import ru.mirea.freelance.model.OrderCategory;
+import ru.mirea.freelance.model.OrderStatus;
 import ru.mirea.freelance.model.User;
 import ru.mirea.freelance.model.UserRole;
 import ru.mirea.freelance.repository.OrderRepository;
@@ -63,6 +64,39 @@ public class OrderService {
     public void delete(Long id) {
         getById(id);
         orders.deleteById(id);
+    }
+
+    public Order assignFreelancer(Long orderId, Long freelancerId) {
+        Order order = getById(orderId);
+        User freelancer = getUser(freelancerId);
+        if (freelancerId.equals(order.getCustomerId())) {
+            throw new BusinessException("Заказчик не может быть исполнителем своего заказа: пользователь с ID "
+                    + freelancerId + ", заказ с ID " + orderId);
+        }
+        if (freelancer.getRole() != UserRole.FREELANCER) {
+            throw new BusinessException("Пользователь с ID " + freelancerId + " не является исполнителем");
+        }
+        if (order.getStatus().isFinal()) {
+            throw new BusinessException("Нельзя назначить исполнителя на заказ с ID " + orderId
+                    + " в статусе " + order.getStatus());
+        }
+        order.setFreelancerId(freelancerId);
+        orders.update(order);
+        return order;
+    }
+
+    public Order changeStatus(Long orderId, OrderStatus next) {
+        Order order = getById(orderId);
+        OrderStatus current = order.getStatus();
+        if (!current.canTransitionTo(next)) {
+            throw new BusinessException("Переход " + current + " → " + next + " запрещён");
+        }
+        if (next == OrderStatus.IN_PROGRESS && order.getFreelancerId() == null) {
+            throw new BusinessException("Нельзя взять в работу заказ без исполнителя: заказ с ID " + orderId);
+        }
+        order.setStatus(next);
+        orders.update(order);
+        return order;
     }
 
     private User getUser(Long id) {
