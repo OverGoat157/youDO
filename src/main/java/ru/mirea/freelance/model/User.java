@@ -13,11 +13,13 @@ public class User {
     private double rating;
     private LocalDate registeredAt;
 
-    /** Для создания нового пользователя: id и дату регистрации назначит база. */
+    /** Новый пользователь с нулевым рейтингом; id назначит репозиторий. */
     public User(String name, String email, UserRole role) {
         this.name = name;
         this.email = email;
         this.role = role;
+        this.rating = 0;
+        this.registeredAt = LocalDate.now();
     }
 
     /** Для чтения из базы: все поля известны. */
