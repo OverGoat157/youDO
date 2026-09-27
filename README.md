@@ -125,7 +125,7 @@ src/main/java/ru/mirea/freelance/
 ├── service/      бизнес-правила, поиск, фильтрация, сортировка; StatisticsService
 ├── ui/           консольное меню
 ├── util/         DatabaseManager, экспорт (Exporter, ExcelExporter, CsvExporter), DbInspector
-└── exception/    DatabaseException, BusinessException
+└── exception/    DatabaseException, BusinessException и её наследники ValidationException, EntityNotFoundException
 sql/              schema.sql — таблицы, seed.sql — тестовые данные
 docs/             ER-диаграмма
 export/           файлы экспорта
