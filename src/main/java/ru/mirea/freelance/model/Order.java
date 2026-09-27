@@ -19,7 +19,7 @@ public class Order {
     private Long freelancerId;
     private LocalDateTime createdAt;
 
-    /** Для создания нового заказа: статус OPEN, id и дату создания назначит база. */
+    /** Новый заказ открыт и ещё не имеет исполнителя; id назначит репозиторий. */
     public Order(String title, String description, OrderCategory category,
                  BigDecimal budget, LocalDate deadline, Long customerId) {
         this.title = title;
@@ -29,6 +29,7 @@ public class Order {
         this.deadline = deadline;
         this.status = OrderStatus.OPEN;
         this.customerId = customerId;
+        this.createdAt = LocalDateTime.now();
     }
 
     /** Для чтения из базы: все поля известны. */
