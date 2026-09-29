@@ -56,7 +56,7 @@ class OrderServiceTest {
 
     @ParameterizedTest
     @NullAndEmptySource
-    @ValueSource(strings = {"   "})
+    @ValueSource(strings = { "   " })
     void createOrder_emptyTitle_throwsValidation(String title) {
         ValidationException e = assertThrows(ValidationException.class,
                 () -> service.create(title, "", OrderCategory.OTHER, BigDecimal.TEN, deadline, customer.getId()));
@@ -65,10 +65,11 @@ class OrderServiceTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"0", "0.00", "-1.00"})
+    @ValueSource(strings = { "0", "0.00", "-1.00" })
     void createOrder_nonPositiveBudget_throwsValidation(String budget) {
         ValidationException e = assertThrows(ValidationException.class,
-                () -> service.create("Заказ", "", OrderCategory.OTHER, new BigDecimal(budget), deadline, customer.getId()));
+                () -> service.create("Заказ", "", OrderCategory.OTHER, new BigDecimal(budget), deadline,
+                        customer.getId()));
         assertTrue(e.getMessage().contains("Бюджет должен быть больше нуля"));
         assertTrue(e.getMessage().contains(budget));
     }
@@ -77,6 +78,18 @@ class OrderServiceTest {
     void createOrder_nullBudget_throwsValidation() {
         assertThrows(ValidationException.class,
                 () -> service.create("Заказ", "", OrderCategory.OTHER, null, deadline, customer.getId()));
+    }
+
+    @Test
+    void createOrder_tooLongTitleOrHugeBudget_throwsValidation() {
+        String longTitle = "З".repeat(151);
+        BigDecimal hugeBudget = new BigDecimal("1" + "0".repeat(100));
+        assertThrows(ValidationException.class,
+                () -> service.create(longTitle, "", OrderCategory.OTHER, new BigDecimal("100"), deadline,
+                        customer.getId()));
+        assertThrows(ValidationException.class,
+                () -> service.create("Заказ", "", OrderCategory.OTHER, hugeBudget, deadline, customer.getId()));
+        assertTrue(service.findAll().isEmpty());
     }
 
     @Test
@@ -90,7 +103,8 @@ class OrderServiceTest {
 
     @Test
     void createOrder_todayDeadline_isAllowed() {
-        Order order = service.create("Заказ", "", OrderCategory.OTHER, BigDecimal.ONE, LocalDate.now(), customer.getId());
+        Order order = service.create("Заказ", "", OrderCategory.OTHER, BigDecimal.ONE, LocalDate.now(),
+                customer.getId());
         assertEquals(LocalDate.now(), order.getDeadline());
     }
 
@@ -156,7 +170,8 @@ class OrderServiceTest {
         assertThrows(ValidationException.class,
                 () -> service.update(order.getId(), "Новое", "", OrderCategory.OTHER, BigDecimal.ZERO, deadline));
         assertThrows(ValidationException.class,
-                () -> service.update(order.getId(), "Новое", "", OrderCategory.OTHER, BigDecimal.TEN, LocalDate.now().minusDays(1)));
+                () -> service.update(order.getId(), "Новое", "", OrderCategory.OTHER, BigDecimal.TEN,
+                        LocalDate.now().minusDays(1)));
         assertThrows(ValidationException.class,
                 () -> service.update(order.getId(), "Новое", "", null, BigDecimal.TEN, deadline));
         assertEquals("Заказ", service.getById(order.getId()).getTitle());
@@ -217,7 +232,7 @@ class OrderServiceTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = OrderStatus.class, names = {"COMPLETED", "CANCELLED"})
+    @EnumSource(value = OrderStatus.class, names = { "COMPLETED", "CANCELLED" })
     void assignFreelancer_finalOrder_throwsBusiness(OrderStatus status) {
         Order order = createOrder();
         order.setStatus(status);
@@ -258,7 +273,7 @@ class OrderServiceTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = OrderStatus.class, names = {"OPEN", "IN_PROGRESS"})
+    @EnumSource(value = OrderStatus.class, names = { "OPEN", "IN_PROGRESS" })
     void changeStatus_cancelActiveOrder_savesFinalStatus(OrderStatus initial) {
         Order order = createOrder();
         service.assignFreelancer(order.getId(), freelancer.getId());
@@ -270,7 +285,7 @@ class OrderServiceTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = OrderStatus.class, names = {"COMPLETED", "CANCELLED"})
+    @EnumSource(value = OrderStatus.class, names = { "COMPLETED", "CANCELLED" })
     void changeStatus_finalOrder_rejectsEveryTransition(OrderStatus initial) {
         Order order = createOrder();
         order.setStatus(initial);
@@ -330,7 +345,8 @@ class OrderServiceTest {
         List<Order> sample = createSearchOrders();
         assertEquals(List.of(sample.get(1)), service.filterByStatus(OrderStatus.IN_PROGRESS));
         assertEquals(List.of(sample.get(1)), service.filterByCategory(OrderCategory.DESIGN));
-        assertEquals(Set.of(sample.get(0), sample.get(2)), new HashSet<>(service.filterByCategory(OrderCategory.OTHER)));
+        assertEquals(Set.of(sample.get(0), sample.get(2)),
+                new HashSet<>(service.filterByCategory(OrderCategory.OTHER)));
         assertTrue(service.filterByStatus(OrderStatus.CANCELLED).isEmpty());
         assertTrue(service.filterByCategory(OrderCategory.MARKETING).isEmpty());
     }
@@ -383,22 +399,27 @@ class OrderServiceTest {
     void sortByBudget_ordersNumericallyInBothDirections() {
         List<Order> sample = createSearchOrders();
         assertEquals(sample, service.sortBy(OrderSortField.BUDGET, true));
-        assertEquals(List.of(sample.get(2), sample.get(1), sample.get(0)), service.sortBy(OrderSortField.BUDGET, false));
+        assertEquals(List.of(sample.get(2), sample.get(1), sample.get(0)),
+                service.sortBy(OrderSortField.BUDGET, false));
     }
 
     @Test
     void sortByDeadline_usesDeadlineInBothDirections() {
         List<Order> sample = createSearchOrders();
         sample.get(0).setDeadline(deadline.plusDays(3));
-        assertEquals(List.of(sample.get(1), sample.get(2), sample.get(0)), service.sortBy(OrderSortField.DEADLINE, true));
-        assertEquals(List.of(sample.get(0), sample.get(2), sample.get(1)), service.sortBy(OrderSortField.DEADLINE, false));
+        assertEquals(List.of(sample.get(1), sample.get(2), sample.get(0)),
+                service.sortBy(OrderSortField.DEADLINE, true));
+        assertEquals(List.of(sample.get(0), sample.get(2), sample.get(1)),
+                service.sortBy(OrderSortField.DEADLINE, false));
     }
 
     @Test
     void sortByCreatedAt_usesCreationTimeInBothDirections() {
         List<Order> sample = createSearchOrders();
-        assertEquals(List.of(sample.get(1), sample.get(2), sample.get(0)), service.sortBy(OrderSortField.CREATED_AT, true));
-        assertEquals(List.of(sample.get(0), sample.get(2), sample.get(1)), service.sortBy(OrderSortField.CREATED_AT, false));
+        assertEquals(List.of(sample.get(1), sample.get(2), sample.get(0)),
+                service.sortBy(OrderSortField.CREATED_AT, true));
+        assertEquals(List.of(sample.get(0), sample.get(2), sample.get(1)),
+                service.sortBy(OrderSortField.CREATED_AT, false));
         assertEquals(3, service.findAll().size());
     }
 
@@ -415,9 +436,12 @@ class OrderServiceTest {
     }
 
     private List<Order> createSearchOrders() {
-        Order low = service.create("Первый", "", OrderCategory.OTHER, new BigDecimal("10.00"), deadline, customer.getId());
-        Order mid = service.create("Второй", "", OrderCategory.DESIGN, new BigDecimal("20"), deadline.plusDays(1), customer.getId());
-        Order high = service.create("Третий", "", OrderCategory.OTHER, new BigDecimal("30"), deadline.plusDays(2), customer.getId());
+        Order low = service.create("Первый", "", OrderCategory.OTHER, new BigDecimal("10.00"), deadline,
+                customer.getId());
+        Order mid = service.create("Второй", "", OrderCategory.DESIGN, new BigDecimal("20"), deadline.plusDays(1),
+                customer.getId());
+        Order high = service.create("Третий", "", OrderCategory.OTHER, new BigDecimal("30"), deadline.plusDays(2),
+                customer.getId());
         service.assignFreelancer(mid.getId(), freelancer.getId());
         service.changeStatus(mid.getId(), OrderStatus.IN_PROGRESS);
         high.setStatus(OrderStatus.COMPLETED);
