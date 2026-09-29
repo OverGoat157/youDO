@@ -69,6 +69,17 @@ public class InputReader {
         }
     }
 
+    public String readEmail(String prompt) {
+        while (true) {
+            String line = readLine(prompt);
+            int at = line.indexOf('@');
+            if (at > 0 && at < line.length() - 1 && line.indexOf('@', at + 1) < 0 && !line.contains(" ")) {
+                return line;
+            }
+            System.out.println("Ошибка: email вида имя@домен, например anna@mail.ru.");
+        }
+    }
+
     public String readOptional(String prompt) {
         String line = readLine(prompt);
         return line.isEmpty() ? null : line;
@@ -81,7 +92,8 @@ public class InputReader {
             try {
                 return Enum.valueOf(type, line.toUpperCase(Locale.ROOT));
             } catch (IllegalArgumentException e) {
-                System.out.println("Ошибка: выберите один из вариантов " + Arrays.toString(type.getEnumConstants()) + ".");
+                System.out.println(
+                        "Ошибка: выберите один из вариантов " + Arrays.toString(type.getEnumConstants()) + ".");
             }
         }
     }

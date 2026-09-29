@@ -11,7 +11,10 @@ import ru.mirea.freelance.repository.UserRepository;
 import java.util.List;
 import java.util.Objects;
 
-/** Управление пользователями и проверка бизнес-правил независимо от способа хранения. */
+/**
+ * Управление пользователями и проверка бизнес-правил независимо от способа
+ * хранения.
+ */
 public class UserService {
     private final UserRepository users;
     private final OrderRepository orders;
@@ -59,8 +62,14 @@ public class UserService {
         if (name == null || name.trim().isEmpty()) {
             throw new ValidationException("Имя не может быть пустым: " + name);
         }
+        if (name.trim().length() > 100) {
+            throw new ValidationException("Имя не длиннее 100 символов, введено " + name.trim().length());
+        }
         if (email == null || !email.contains("@")) {
             throw new ValidationException("Email должен содержать @: " + email);
+        }
+        if (email.trim().length() > 150) {
+            throw new ValidationException("Email не длиннее 150 символов, введено " + email.trim().length());
         }
         if (role == null) {
             throw new ValidationException("Недопустимая роль: " + role);

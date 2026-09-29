@@ -21,13 +21,16 @@ public class OrderService {
     private final OrderRepository orders;
     private final UserRepository users;
 
+    /** Соответствует NUMERIC(12,2) в базе: 10 цифр до запятой. */
+    private static final BigDecimal MAX_BUDGET = new BigDecimal("9999999999.99");
+
     public OrderService(OrderRepository orders, UserRepository users) {
         this.orders = orders;
         this.users = users;
     }
 
     public Order create(String title, String description, OrderCategory category, BigDecimal budget,
-                        LocalDate deadline, Long customerId) {
+            LocalDate deadline, Long customerId) {
         validate(title, budget, deadline);
         validateCategory(category);
         User customer = getUser(customerId);
@@ -49,7 +52,7 @@ public class OrderService {
     }
 
     public Order update(Long id, String title, String description, OrderCategory category, BigDecimal budget,
-                        LocalDate deadline) {
+            LocalDate deadline) {
         Order order = getById(id);
         validate(title, budget, deadline);
         validateCategory(category);
@@ -174,8 +177,15 @@ public class OrderService {
         if (title == null || title.trim().isEmpty()) {
             throw new ValidationException("Название заказа не может быть пустым: " + title);
         }
+        if (title.trim().length() > 150) {
+            throw new ValidationException("Название не длиннее 150 символов, введено " + title.trim().length());
+        }
         if (budget == null || budget.compareTo(BigDecimal.ZERO) <= 0) {
             throw new ValidationException("Бюджет должен быть больше нуля: " + budget);
+        }
+        if (budget.compareTo(MAX_BUDGET) > 0) {
+            throw new ValidationException(
+                    "Бюджет не больше " + MAX_BUDGET.toPlainString() + ": " + budget.toPlainString());
         }
         if (deadline == null) {
             throw new ValidationException("Дедлайн не задан: " + deadline);

@@ -47,7 +47,7 @@ class UserServiceTest {
 
     @ParameterizedTest
     @NullAndEmptySource
-    @ValueSource(strings = {"   "})
+    @ValueSource(strings = { "   " })
     void createUser_emptyName_throwsValidation(String name) {
         ValidationException e = assertThrows(ValidationException.class,
                 () -> service.create(name, "new@example.com", UserRole.CUSTOMER));
@@ -57,7 +57,7 @@ class UserServiceTest {
 
     @ParameterizedTest
     @NullAndEmptySource
-    @ValueSource(strings = {"invalid"})
+    @ValueSource(strings = { "invalid" })
     void createUser_invalidEmail_throwsValidation(String email) {
         ValidationException e = assertThrows(ValidationException.class,
                 () -> service.create("Имя", email, UserRole.CUSTOMER));
@@ -67,6 +67,15 @@ class UserServiceTest {
     @Test
     void createUser_nullRole_throwsValidation() {
         assertThrows(ValidationException.class, () -> service.create("Имя", "new@example.com", null));
+    }
+
+    @Test
+    void createUser_tooLongNameOrEmail_throwsValidation() {
+        String longName = "А".repeat(101);
+        String longEmail = "a".repeat(150) + "@example.com";
+        assertThrows(ValidationException.class, () -> service.create(longName, "ok@example.com", UserRole.CUSTOMER));
+        assertThrows(ValidationException.class, () -> service.create("Иван", longEmail, UserRole.CUSTOMER));
+        assertEquals(2, service.findAll().size());
     }
 
     @Test
@@ -121,10 +130,10 @@ class UserServiceTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = OrderStatus.class, names = {"OPEN", "IN_PROGRESS", "ON_REVIEW"})
+    @EnumSource(value = OrderStatus.class, names = { "OPEN", "IN_PROGRESS", "ON_REVIEW" })
     void deleteUser_withActiveOrder_throwsBusiness(OrderStatus status) {
         saveOrder(status);
-        for (User user : new User[]{customer, freelancer}) {
+        for (User user : new User[] { customer, freelancer }) {
             BusinessException e = assertThrows(BusinessException.class, () -> service.delete(user.getId()));
             assertTrue(e.getMessage().contains("ID " + user.getId()));
             assertTrue(e.getMessage().contains("активные заказы"));
@@ -133,7 +142,7 @@ class UserServiceTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = OrderStatus.class, names = {"COMPLETED", "CANCELLED"})
+    @EnumSource(value = OrderStatus.class, names = { "COMPLETED", "CANCELLED" })
     void deleteUser_withFinalOrder_isAllowedByBusinessRules(OrderStatus status) {
         saveOrder(status);
         service.delete(customer.getId());

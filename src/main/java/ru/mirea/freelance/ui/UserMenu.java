@@ -47,7 +47,7 @@ public class UserMenu implements ConsoleMenu.Submenu {
 
     private void create() {
         String name = in.readNonEmpty("Имя: ");
-        String email = in.readNonEmpty("Email: ");
+        String email = in.readEmail("Email: ");
         UserRole role = in.readEnum("Роль: ", UserRole.class);
         User user = userService.create(name, email, role);
         System.out.println("Пользователь создан, ID = " + user.getId());
@@ -59,7 +59,7 @@ public class UserMenu implements ConsoleMenu.Submenu {
         System.out.println("Текущие данные:");
         TablePrinter.printUsers(List.of(current));
         String name = in.readNonEmpty("Новое имя: ");
-        String email = in.readNonEmpty("Новый email: ");
+        String email = in.readEmail("Новый email: ");
         UserRole role = in.readEnum("Новая роль: ", UserRole.class);
         userService.update(id, name, email, role);
         System.out.println("Пользователь изменён");
