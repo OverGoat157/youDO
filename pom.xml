@@ -12,6 +12,7 @@
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
         <javafx.version>21.0.8</javafx.version>
+        <youdo.db.config></youdo.db.config>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -67,6 +68,9 @@
                 <version>0.0.8</version>
                 <configuration>
                     <mainClass>ru.mirea.freelance.fx.FxApplication</mainClass>
+                    <options>
+                        <option>-Dyoudo.db.config=${youdo.db.config}</option>
+                    </options>
                 </configuration>
             </plugin>
             <plugin>

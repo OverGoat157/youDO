@@ -17,7 +17,7 @@ public class DatabaseManager {
     private final Properties connectionProperties = new Properties();
 
     public DatabaseManager() {
-        this(DatabaseManager.class.getResourceAsStream("/db.properties"));
+        this(defaultConfig());
     }
 
     /** Явный файл для проверки отдельной тестовой базы. */
@@ -51,6 +51,18 @@ public class DatabaseManager {
             return Files.newInputStream(config);
         } catch (IOException e) {
             throw new DatabaseException("Не удалось открыть файл настроек БД. Проверьте путь и права доступа.", e);
+        }
+    }
+
+    private static InputStream defaultConfig() {
+        String external = System.getProperty("youdo.db.config");
+        if (external == null || external.isBlank()) {
+            return DatabaseManager.class.getResourceAsStream("/db.properties");
+        }
+        try {
+            return open(Path.of(external));
+        } catch (java.nio.file.InvalidPathException error) {
+            throw new DatabaseException("Некорректный путь в параметре youdo.db.config.", error);
         }
     }
 

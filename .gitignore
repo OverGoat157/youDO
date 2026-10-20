@@ -18,3 +18,4 @@ db.properties
 .project
 .settings/
 *.log
+__pycache__/
