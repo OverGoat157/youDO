@@ -126,6 +126,8 @@ FXML / CSS → Controller → Service → Repository → JDBC → PostgreSQL
 - [Сервисы и совместный поиск](docs/services.md)
 - [Проверки пользователей](docs/ui-checks.md)
 - [Сценарий предзащиты](docs/demo.md)
+- [Подробный конспект защиты](docs/defense-guide.md)
+- [Разбор запуска JavaFX в четырёх частях для телефона](docs/defense/README.md)
 - [Docker для нашего проекта: БД, запуск и тесты](docs/docker-local.md)
 - [Отдельный Docker-пример преподавателя и его статус](docs/docker-demo.md)
 - [ER-диаграмма](docs/er-diagram.png)
