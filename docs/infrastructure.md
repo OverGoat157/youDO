@@ -16,6 +16,8 @@ mvn javafx:run
 
 Основной запуск — `mvn javafx:run`, главный класс — `ru.mirea.freelance.fx.FxApplication`. JAR не содержит зависимости и не предназначен для прежнего запуска `java -jar`. Maven копирует FXML и CSS в classpath, а локальный конфиг доступен приложению в `target/classes`.
 
+Для отдельного подключения поддерживается `mvn -Dyoudo.db.config=/path/to/db.properties javafx:run`. Maven передаёт параметр в JVM приложения; `DatabaseManager` читает этот файл вместо ресурса classpath. Пустой параметр сохраняет обычное поведение. [Docker-стенд](docker-local.md) использует `docker/db.properties`, не перезаписывая конфиг КР №1.
+
 Если главный экран отсутствует, открывается `startup.fxml` с вкладками пользователей и статистики; при переходе данные обновляются. Когда в ресурсах появится `/ru/mirea/freelance/fx/main.fxml`, приложение загрузит его. Общий `/ru/mirea/freelance/fx/app.css` подключается к Scene, когда файл добавлен. Главное окно заказов, пользователи и общий CSS включены; итоговый прогон описан в review.md.
 
 ## Контракты для экранов

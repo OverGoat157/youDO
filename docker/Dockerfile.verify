@@ -1,0 +1,17 @@
+FROM maven:3.9.9-eclipse-temurin-21-jammy
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    xvfb xauth libgtk-3-0 libxtst6 libxi6 libxrender1 libasound2 \
+    fontconfig fonts-dejavu-core python3 \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --uid 10001 app \
+    && mkdir -p /home/app/.m2 /app \
+    && chown -R app:app /home/app /app
+
+ENV LANG=C.UTF-8 LC_ALL=C.UTF-8 MAVEN_CONFIG=/home/app/.m2
+WORKDIR /app
+COPY --chown=app:app pom.xml ./
+COPY --chown=app:app src ./src
+COPY --chown=app:app docker/properties.py docker/verify.py ./docker/
+USER app
+CMD ["python3", "docker/verify.py"]

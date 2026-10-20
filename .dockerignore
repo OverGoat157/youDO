@@ -1,0 +1,12 @@
+.git
+target
+.env
+.env.*
+!.env.example
+**/db.properties
+**/__pycache__
+**/*.log
+docs
+export
+.idea
+.vscode

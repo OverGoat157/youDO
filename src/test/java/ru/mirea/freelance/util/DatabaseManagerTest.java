@@ -70,6 +70,31 @@ class DatabaseManagerTest {
     }
 
     @Test
+    void externalConfigCanBeSelectedWithoutReplacingClasspathFile() throws IOException {
+        Path file = write(settings());
+        withExternalConfig(file, () -> assertDoesNotThrow(() -> { new DatabaseManager(); }));
+    }
+
+    @Test
+    void missingExternalConfigGivesAnErrorInsteadOfUsingAnotherDatabase() {
+        withExternalConfig(directory.resolve("missing.properties"), () -> {
+            DatabaseException error = assertThrows(DatabaseException.class, DatabaseManager::new);
+            assertTrue(error.getMessage().contains("файл настроек БД"));
+        });
+    }
+
+    private void withExternalConfig(Path file, Runnable check) {
+        String previous = System.getProperty("youdo.db.config");
+        System.setProperty("youdo.db.config", file.toString());
+        try {
+            check.run();
+        } finally {
+            if (previous == null) System.clearProperty("youdo.db.config");
+            else System.setProperty("youdo.db.config", previous);
+        }
+    }
+
+    @Test
     void constructorDoesNotConnectAndConnectionErrorDoesNotExposeCredentials() throws IOException {
         DatabaseManager database = new DatabaseManager(write(settings()));
         DatabaseException error = assertThrows(DatabaseException.class, database::getConnection);

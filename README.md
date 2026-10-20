@@ -17,12 +17,22 @@
 ## Требования
 
 - **JDK 21**, Maven **3.9+**. Проверьте `java -version` и `mvn -version`: Maven должен использовать JDK 21 через `JAVA_HOME`.
-- PostgreSQL 14+ с базой `youdo` из КР №1; JDBC-драйвер поставляется Maven.
+- PostgreSQL 14+ с базой `youdo` из КР №1 либо наш Docker-стенд с PostgreSQL 16; JDBC-драйвер поставляется Maven.
 - Графический сеанс для JavaFX. Для автоматических проверок в Linux без дисплея используется Xvfb.
 
 Приложение немодульное. JavaFX 21.0.8, PostgreSQL JDBC, Apache POI и JUnit 5 объявлены в `pom.xml`.
 
 ## Подготовка базы
+
+Готовое окружение с отдельной БД и демонстрационными данными:
+
+```sh
+python3 docker/setup.py
+docker compose up -d --wait db
+mvn -Dyoudo.db.config=docker/db.properties javafx:run
+```
+
+Для этого нужны Docker с Compose и Python 3, а для окна — JDK 21 и Maven 3.9+. Настройки прежней БД не меняются. Полный прогон тестов также можно выполнить в контейнере без локальной Java: [инструкция Docker](docs/docker-local.md).
 
 Если база КР №1 уже есть, используйте её и переходите к конфигурации подключения. Приложение не выполняет SQL-скрипты автоматически.
 
@@ -116,6 +126,7 @@ FXML / CSS → Controller → Service → Repository → JDBC → PostgreSQL
 - [Сервисы и совместный поиск](docs/services.md)
 - [Проверки пользователей](docs/ui-checks.md)
 - [Сценарий предзащиты](docs/demo.md)
+- [Docker для нашего проекта: БД, запуск и тесты](docs/docker-local.md)
 - [Отдельный Docker-пример преподавателя и его статус](docs/docker-demo.md)
 - [ER-диаграмма](docs/er-diagram.png)
 
