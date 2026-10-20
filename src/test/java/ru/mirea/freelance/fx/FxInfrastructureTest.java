@@ -94,7 +94,7 @@ class FxInfrastructureTest {
             context.tasks().run(() -> null, ignored -> finished.complete(null), finished::completeExceptionally);
             finished.get(5, TimeUnit.SECONDS);
             int count = onFx(() -> {
-                Parent root = loader.getRoot();
+                Parent root = (Parent) loader.getNamespace().get("statisticsView");
                 TableView<?> table = (TableView<?>) root.lookup("#table");
                 return table.getItems().size();
             });

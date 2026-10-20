@@ -7,6 +7,8 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableView;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.TabPane;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 import javafx.stage.Window;
@@ -18,10 +20,13 @@ import ru.mirea.freelance.fx.controller.UserFormController;
 import ru.mirea.freelance.fx.controller.UsersController;
 import ru.mirea.freelance.model.User;
 import ru.mirea.freelance.model.UserRole;
+import ru.mirea.freelance.model.OrderCategory;
 import ru.mirea.freelance.repository.InMemoryOrderRepository;
 import ru.mirea.freelance.repository.InMemoryUserRepository;
 
 import java.util.ArrayList;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -145,6 +150,57 @@ class UsersUiTest {
                 return null;
             });
             assertEquals("Анна", context.users().getById(original.getId()).getName());
+        }
+    }
+
+    @Test
+    void linkedRoleErrorKeepsFormOpenAndLeavesTheStoredUserUnchanged() throws Exception {
+        AppContext context = new AppContext(new InMemoryUserRepository(), new InMemoryOrderRepository());
+        User user = context.users().create("Анна", "anna@example.org", UserRole.CUSTOMER);
+        context.orders().create("Заказ", "", OrderCategory.DESIGN, BigDecimal.TEN,
+                LocalDate.now().plusDays(1), user.getId());
+        try (View view = open(context, "user-form.fxml")) {
+            onFx(() -> {
+                UserFormController controller = view.loader().getController();
+                controller.setUser(user);
+                view.field("nameField").setText("Другое имя");
+                @SuppressWarnings("unchecked")
+                ComboBox<UserRole> roles = (ComboBox<UserRole>) view.root().lookup("#roleBox");
+                roles.setValue(UserRole.FREELANCER);
+                view.button("saveButton").fire();
+                return null;
+            });
+            finishTasks(context);
+            onFx(() -> {
+                assertTrue(view.stage().isShowing());
+                assertTrue(((Label) view.root().lookup("#errorLabel")).getText().contains("заказчиком"));
+                assertEquals("Другое имя", view.field("nameField").getText());
+                assertFalse(view.button("saveButton").isDisabled());
+                return null;
+            });
+            assertEquals("Анна", context.users().getById(user.getId()).getName());
+            assertEquals(UserRole.CUSTOMER, context.users().getById(user.getId()).getRole());
+        }
+    }
+
+    @Test
+    void startupLoadsUsersAndRefreshesStatisticsWhenTheTabChanges() throws Exception {
+        AppContext context = new AppContext(new InMemoryUserRepository(), new InMemoryOrderRepository());
+        context.users().create("Анна", "anna@example.org", UserRole.CUSTOMER);
+        try (View view = open(context, "startup.fxml")) {
+            finishTasks(context);
+            onFx(() -> {
+                Parent usersRoot = (Parent) view.loader().getNamespace().get("usersView");
+                assertEquals(1, ((TableView<?>) usersRoot.lookup("#table")).getItems().size());
+                ((TabPane) view.root()).getSelectionModel().select(1);
+                return null;
+            });
+            finishTasks(context);
+            onFx(() -> {
+                Parent statsRoot = (Parent) view.loader().getNamespace().get("statisticsView");
+                assertEquals(13, ((TableView<?>) statsRoot.lookup("#table")).getItems().size());
+                return null;
+            });
         }
     }
 
