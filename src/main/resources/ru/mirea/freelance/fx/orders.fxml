@@ -4,6 +4,7 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ProgressIndicator?>
+<?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.layout.ColumnConstraints?>
@@ -19,11 +20,20 @@
 
     <Label text="Заказы" styleClass="page-title"/>
 
-    <HBox spacing="12" alignment="CENTER_LEFT" styleClass="toolbar">
-        <Button fx:id="refreshButton" text="Обновить" onAction="#onRefresh" styleClass="primary-button"/>
+    <HBox spacing="8" alignment="CENTER_LEFT" styleClass="toolbar">
+        <Button fx:id="createButton" text="Создать" onAction="#onCreate" styleClass="primary-button"/>
+        <Button fx:id="editButton" text="Изменить" onAction="#onEdit"/>
+        <Button fx:id="deleteButton" text="Удалить" onAction="#onDelete" styleClass="danger-button"/>
+        <Separator orientation="VERTICAL"/>
+        <Button fx:id="assignButton" text="Назначить исполнителя" onAction="#onAssign"/>
+        <Button fx:id="statusButton" text="Сменить статус" onAction="#onChangeStatus"/>
+        <Separator orientation="VERTICAL"/>
+        <Button text="Экспорт CSV" onAction="#onExport"/>
+        <Button fx:id="refreshButton" text="Обновить" onAction="#onRefresh"/>
         <ProgressIndicator fx:id="progress" prefWidth="20" prefHeight="20" visible="false" managed="false"/>
-        <Label fx:id="errorLabel" styleClass="field-error" wrapText="true" visible="false" managed="false"/>
     </HBox>
+
+    <Label fx:id="errorLabel" styleClass="field-error" wrapText="true" visible="false" managed="false"/>
 
     <TableView fx:id="table" VBox.vgrow="ALWAYS">
         <placeholder>
