@@ -19,3 +19,6 @@ db.properties
 .settings/
 *.log
 __pycache__/
+
+# локальные материалы, не входящие в проект
+/.local/
