@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+
+<TabPane fx:id="tabs" tabClosingPolicy="UNAVAILABLE" xmlns="http://javafx.com/javafx/21"
+         xmlns:fx="http://javafx.com/fxml/1" fx:controller="ru.mirea.freelance.fx.controller.MainController">
+    <tabs>
+        <Tab fx:id="ordersTab" text="Заказы">
+            <content>
+                <fx:include fx:id="ordersView" source="orders.fxml"/>
+            </content>
+        </Tab>
+        <Tab fx:id="usersTab" text="Пользователи">
+            <content>
+                <fx:include fx:id="usersView" source="users.fxml"/>
+            </content>
+        </Tab>
+        <Tab fx:id="statisticsTab" text="Статистика">
+            <content>
+                <fx:include fx:id="statisticsView" source="statistics.fxml"/>
+            </content>
+        </Tab>
+    </tabs>
+</TabPane>
