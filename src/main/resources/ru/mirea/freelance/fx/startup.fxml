@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.BorderPane?>
+<!-- Экран для первого запуска каркаса. После добавления main.fxml запускается главное окно. -->
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1">
+    <center>
+        <fx:include fx:id="statisticsView" source="statistics.fxml"/>
+    </center>
+</BorderPane>

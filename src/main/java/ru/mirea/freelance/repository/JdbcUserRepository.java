@@ -16,8 +16,6 @@ import java.util.Optional;
 /** JDBC-реализация UserRepository для PostgreSQL. Весь SQL по таблице users находится здесь. */
 public class JdbcUserRepository implements UserRepository {
 
-    private static final String SELECT = "SELECT id, name, email, role, rating, registered_at FROM users";
-
     private final DatabaseManager db;
 
     public JdbcUserRepository(DatabaseManager db) {
@@ -27,8 +25,7 @@ public class JdbcUserRepository implements UserRepository {
     @Override
     public User save(User user) {
         String sql = "INSERT INTO users (name, email, role) VALUES (?, ?, ?) RETURNING id, rating, registered_at";
-        try (Connection c = db.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
+        try (Connection c = db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, user.getName());
             ps.setString(2, user.getEmail());
             ps.setString(3, user.getRole().name());
@@ -40,35 +37,36 @@ public class JdbcUserRepository implements UserRepository {
             }
             return user;
         } catch (SQLException e) {
-            throw new DatabaseException("Не удалось сохранить пользователя: " + e.getMessage(), e);
+            throw databaseError("Не удалось сохранить пользователя.", e);
         }
     }
 
     @Override
     public Optional<User> findById(Long id) {
-        try (Connection c = db.getConnection();
-             PreparedStatement ps = c.prepareStatement(SELECT + " WHERE id = ?")) {
+        String sql = "SELECT id, name, email, role, rating, registered_at FROM users WHERE id = ?";
+
+        try (Connection c = db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setLong(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? Optional.of(mapRow(rs)) : Optional.empty();
             }
         } catch (SQLException e) {
-            throw new DatabaseException("Не удалось найти пользователя с ID " + id + ": " + e.getMessage(), e);
+            throw databaseError("Не удалось найти пользователя с ID " + id, e);
+
         }
     }
 
     @Override
     public List<User> findAll() {
+        String sql = "SELECT id, name, email, role, rating, registered_at FROM users ORDER BY id";
         List<User> users = new ArrayList<>();
-        try (Connection c = db.getConnection();
-             PreparedStatement ps = c.prepareStatement(SELECT + " ORDER BY id");
-             ResultSet rs = ps.executeQuery()) {
+        try (Connection c = db.getConnection(); PreparedStatement ps = c.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 users.add(mapRow(rs));
             }
             return users;
         } catch (SQLException e) {
-            throw new DatabaseException("Не удалось получить список пользователей: " + e.getMessage(), e);
+            throw databaseError("Не удалось получить всех пользователей.", e);
         }
     }
 
@@ -84,7 +82,7 @@ public class JdbcUserRepository implements UserRepository {
             ps.setLong(5, user.getId());
             ps.executeUpdate();
         } catch (SQLException e) {
-            throw new DatabaseException("Не удалось обновить пользователя с ID " + user.getId() + ": " + e.getMessage(), e);
+            throw databaseError("Не удалось обновить пользователя с ID " + user.getId(), e);
         }
     }
 
@@ -95,26 +93,36 @@ public class JdbcUserRepository implements UserRepository {
             ps.setLong(1, id);
             ps.executeUpdate();
         } catch (SQLException e) {
-            throw new DatabaseException("Не удалось удалить пользователя с ID " + id + ": " + e.getMessage(), e);
+            throw databaseError("Не удалось удалить пользователя с ID " + id, e);
         }
     }
 
     @Override
     public Optional<User> findByEmail(String email) {
-        try (Connection c = db.getConnection();
-             PreparedStatement ps = c.prepareStatement(SELECT + " WHERE email = ?")) {
+        String sql = "SELECT id, name, email, role, rating, registered_at FROM users WHERE email = ?";
+        try (Connection c = db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, email);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? Optional.of(mapRow(rs)) : Optional.empty();
             }
         } catch (SQLException e) {
-            throw new DatabaseException("Не удалось найти пользователя по email " + email + ": " + e.getMessage(), e);
+            throw databaseError("Не удалось найти пользователя по email " + email, e);
         }
     }
 
     @Override
     public boolean existsById(Long id) {
         return findById(id).isPresent();
+    }
+
+    private DatabaseException databaseError(String action, SQLException error) {
+        String message = switch (String.valueOf(error.getSQLState())) {
+            case "23505" -> "Пользователь с таким email уже существует.";
+            case "23503" -> "Нельзя удалить пользователя: на него ссылаются заказы, в том числе завершённые.";
+            case "23514" -> "Данные пользователя нарушают ограничения базы. Проверьте роль и рейтинг.";
+            default -> action;
+        };
+        return new DatabaseException(message, error);
     }
 
     /** Собирает User из текущей строки ResultSet. Единственное место, где колонки превращаются в поля. */

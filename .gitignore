@@ -12,4 +12,9 @@ target/
 .DS_Store
 
 # локальные настройки БД с паролем
-src/main/resources/db.properties
+db.properties
+.env
+.classpath
+.project
+.settings/
+*.log

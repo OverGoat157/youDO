@@ -4,44 +4,71 @@ import ru.mirea.freelance.exception.DatabaseException;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
 
-/**
- * Подключение к PostgreSQL. Настройки читаются из db.properties в classpath.
- */
+/** Настройки читаются один раз, соединения открываются только в фоновых операциях. */
 public class DatabaseManager {
-
-    private static final String CONFIG_FILE = "db.properties";
-
     private final String url;
-    private final String user;
-    private final String password;
+    private final Properties connectionProperties = new Properties();
 
     public DatabaseManager() {
-        Properties props = new Properties();
-        try (InputStream in = getClass().getClassLoader().getResourceAsStream(CONFIG_FILE)) {
-            if (in == null) {
-                throw new DatabaseException("Файл " + CONFIG_FILE + " не найден. "
-                        + "Скопируйте db.properties.example в db.properties и укажите настройки.");
-            }
-            props.load(in);
-        } catch (IOException e) {
-            throw new DatabaseException("Не удалось прочитать " + CONFIG_FILE, e);
-        }
-        url = props.getProperty("db.url");
-        user = props.getProperty("db.user");
-        password = props.getProperty("db.password");
+        this(DatabaseManager.class.getResourceAsStream("/db.properties"));
     }
 
-    /** Открывает новое соединение. Закрывать его должен вызывающий (try-with-resources). */
+    /** Явный файл для проверки отдельной тестовой базы. */
+    public DatabaseManager(Path config) {
+        this(open(config));
+    }
+
+    private DatabaseManager(InputStream input) {
+        if (input == null) {
+            throw new DatabaseException("Файл db.properties не найден. Скопируйте "
+                    + "src/main/resources/db.properties.example в db.properties рядом с ним и заполните настройки.");
+        }
+        Properties config = new Properties();
+        try (input) {
+            config.load(input);
+        } catch (IOException | IllegalArgumentException e) {
+            throw new DatabaseException("Не удалось прочитать db.properties. Проверьте формат и доступ к файлу.", e);
+        }
+        url = required(config, "db.url").trim();
+        if (!url.startsWith("jdbc:postgresql:")) {
+            throw new DatabaseException("Параметр db.url должен быть JDBC-адресом PostgreSQL.");
+        }
+        connectionProperties.setProperty("user", required(config, "db.user").trim());
+        connectionProperties.setProperty("password", required(config, "db.password"));
+        connectionProperties.setProperty("connectTimeout", "5");
+        connectionProperties.setProperty("socketTimeout", "15");
+    }
+
+    private static InputStream open(Path config) {
+        try {
+            return Files.newInputStream(config);
+        } catch (IOException e) {
+            throw new DatabaseException("Не удалось открыть файл настроек БД. Проверьте путь и права доступа.", e);
+        }
+    }
+
+    private static String required(Properties config, String key) {
+        String value = config.getProperty(key);
+        if (value == null || value.isBlank()) {
+            throw new DatabaseException("В db.properties не задан параметр " + key + ".");
+        }
+        return value;
+    }
+
     public Connection getConnection() {
         try {
-            return DriverManager.getConnection(url, user, password);
+            return DriverManager.getConnection(url, connectionProperties);
         } catch (SQLException e) {
-            throw new DatabaseException("Не удалось подключиться к базе данных: " + e.getMessage(), e);
+            // Сообщение драйвера может содержать реквизиты из URL, поэтому в UI его не передаём.
+            throw new DatabaseException("Не удалось подключиться к базе данных. "
+                    + "Проверьте, запущен ли PostgreSQL, адрес, порт и реквизиты в db.properties.", e);
         }
     }
 }
