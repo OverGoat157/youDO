@@ -92,6 +92,13 @@ class StatisticsServiceTest {
     }
 
     @Test
+    void collect_averageRoundsExactHalfKopeckUp() {
+        addOrder("0.01", OrderCategory.OTHER, OrderStatus.OPEN, LocalDate.now().plusDays(1));
+        addOrder("0.06", OrderCategory.OTHER, OrderStatus.OPEN, LocalDate.now().plusDays(1));
+        assertEquals(new BigDecimal("0.04"), service.collect().get("Средний бюджет"));
+    }
+
+    @Test
     void collect_activeBudget_exactBigDecimalSumWithoutFinalStatuses() {
         LocalDate future = LocalDate.now().plusDays(1);
         addOrder("0.10", OrderCategory.OTHER, OrderStatus.OPEN, future);
