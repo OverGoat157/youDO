@@ -18,9 +18,6 @@ import java.util.Optional;
 /** JDBC-реализация OrderRepository для PostgreSQL. Весь SQL по таблице orders находится здесь. */
 public class JdbcOrderRepository implements OrderRepository {
 
-    private static final String SELECT = "SELECT id, title, description, category, budget, deadline, status, "
-            + "customer_id, freelancer_id, created_at FROM orders";
-
     private final DatabaseManager db;
 
     public JdbcOrderRepository(DatabaseManager db) {
@@ -48,31 +45,33 @@ public class JdbcOrderRepository implements OrderRepository {
             }
             return order;
         } catch (SQLException e) {
-            throw new DatabaseException("Не удалось сохранить заказ: " + e.getMessage(), e);
+            throw new DatabaseException("Не удалось сохранить заказ: ", e);
         }
     }
 
     @Override
     public Optional<Order> findById(Long id) {
-        try (Connection c = db.getConnection();
-             PreparedStatement ps = c.prepareStatement(SELECT + " WHERE id = ?")) {
+        String sql = "SELECT id, title, description, category, budget, deadline, status, customer_id, freelancer_id, created_at FROM orders WHERE id = ?";
+
+        try (Connection c = db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setLong(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? Optional.of(mapRow(rs)) : Optional.empty();
             }
         } catch (SQLException e) {
-            throw new DatabaseException("Не удалось найти заказ с ID " + id + ": " + e.getMessage(), e);
+            throw new DatabaseException("Не удалось найти заказ по ID " + id, e);
         }
     }
 
     @Override
     public List<Order> findAll() {
-        try (Connection c = db.getConnection();
-             PreparedStatement ps = c.prepareStatement(SELECT + " ORDER BY id");
-             ResultSet rs = ps.executeQuery()) {
+        String sql = "SELECT id, title, description, category, budget, deadline, status, customer_id, freelancer_id, created_at FROM orders ORDER BY id";
+
+        try (Connection c = db.getConnection(); PreparedStatement ps = c.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
             return readAll(rs);
+
         } catch (SQLException e) {
-            throw new DatabaseException("Не удалось получить список заказов: " + e.getMessage(), e);
+            throw new DatabaseException("Не удалось получить список заказов ", e);
         }
     }
 
@@ -92,7 +91,7 @@ public class JdbcOrderRepository implements OrderRepository {
             ps.setLong(8, order.getId());
             ps.executeUpdate();
         } catch (SQLException e) {
-            throw new DatabaseException("Не удалось обновить заказ с ID " + order.getId() + ": " + e.getMessage(), e);
+            throw new DatabaseException("Не удалось обновить заказ с ID " + order.getId(), e);
         }
     }
 
@@ -103,44 +102,64 @@ public class JdbcOrderRepository implements OrderRepository {
             ps.setLong(1, id);
             ps.executeUpdate();
         } catch (SQLException e) {
-            throw new DatabaseException("Не удалось удалить заказ с ID " + id + ": " + e.getMessage(), e);
+            throw new DatabaseException("Не удалось удалить заказ с ID " + id, e);
         }
     }
 
     /** Поиск по части названия без учёта регистра. */
     @Override
     public List<Order> findByTitleContaining(String part) {
-        try (Connection c = db.getConnection();
-             PreparedStatement ps = c.prepareStatement(SELECT + " WHERE title ILIKE ? ORDER BY id")) {
+        String sql = "SELECT id, title, description, category, budget, deadline, status, customer_id, freelancer_id, created_at FROM orders WHERE title ILIKE ? ORDER BY id";
+
+        try (Connection c = db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, "%" + part + "%");
             try (ResultSet rs = ps.executeQuery()) {
                 return readAll(rs);
             }
         } catch (SQLException e) {
-            throw new DatabaseException("Не удалось найти заказы по названию: " + e.getMessage(), e);
+            throw new DatabaseException("Не удалось найти заказы по названию: ", e);
         }
     }
 
     @Override
     public List<Order> findByCustomerId(Long customerId) {
-        return findByLongColumn("customer_id", customerId);
+        String sql = "SELECT id, title, description, category, budget, deadline, status, customer_id, freelancer_id, created_at FROM orders WHERE customer_id = ? ORDER BY id";
+
+        try (Connection c = db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setLong(1, customerId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return readAll(rs);
+            }
+        } catch (SQLException e) {
+            throw new DatabaseException("Не удалось найти заказы заказчика с ID " + customerId, e);
+        }
     }
 
     @Override
     public List<Order> findByFreelancerId(Long freelancerId) {
-        return findByLongColumn("freelancer_id", freelancerId);
+        String sql = "SELECT id, title, description, category, budget, deadline, status, customer_id, freelancer_id, created_at FROM orders WHERE freelancer_id = ? ORDER BY id";
+
+        try (Connection c = db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setLong(1, freelancerId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return readAll(rs);
+            }
+        } catch (SQLException e) {
+            throw new DatabaseException("Не удалось найти заказы исполнителя с ID " + freelancerId, e);
+        }
     }
 
     @Override
     public List<Order> findByStatus(OrderStatus status) {
-        try (Connection c = db.getConnection();
-             PreparedStatement ps = c.prepareStatement(SELECT + " WHERE status = ? ORDER BY id")) {
+        String sql = "SELECT id, title, description, category, budget, deadline, status, customer_id, freelancer_id, created_at FROM orders WHERE status = ? ORDER BY id";
+
+        try (Connection c = db.getConnection(); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, status.name());
             try (ResultSet rs = ps.executeQuery()) {
                 return readAll(rs);
             }
         } catch (SQLException e) {
-            throw new DatabaseException("Не удалось найти заказы по статусу: " + e.getMessage(), e);
+            throw new DatabaseException("Не удалось найти заказы по статусу: ", e);
         }
     }
 
@@ -157,19 +176,7 @@ public class JdbcOrderRepository implements OrderRepository {
                 return rs.getLong(1);
             }
         } catch (SQLException e) {
-            throw new DatabaseException("Не удалось посчитать активные заказы пользователя с ID " + userId + ": " + e.getMessage(), e);
-        }
-    }
-
-    private List<Order> findByLongColumn(String column, Long value) {
-        try (Connection c = db.getConnection();
-             PreparedStatement ps = c.prepareStatement(SELECT + " WHERE " + column + " = ? ORDER BY id")) {
-            ps.setLong(1, value);
-            try (ResultSet rs = ps.executeQuery()) {
-                return readAll(rs);
-            }
-        } catch (SQLException e) {
-            throw new DatabaseException("Не удалось найти заказы по " + column + ": " + e.getMessage(), e);
+            throw new DatabaseException("Не удалось посчитать активные заказы пользователя с ID " + userId, e);
         }
     }
 
