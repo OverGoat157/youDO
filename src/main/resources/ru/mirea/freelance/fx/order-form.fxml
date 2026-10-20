@@ -53,7 +53,8 @@
     <Label fx:id="errorLabel" wrapText="true" styleClass="field-error"/>
 
     <HBox spacing="12" alignment="CENTER_RIGHT">
-        <Button text="Отмена" cancelButton="true" onAction="#onCancel"/>
+        <Button fx:id="retryUsersButton" text="Обновить пользователей" onAction="#loadUsers"/>
+        <Button fx:id="cancelButton" text="Отмена" cancelButton="true" onAction="#onCancel"/>
         <Button fx:id="saveButton" text="Сохранить" defaultButton="true" onAction="#onSave"
                 styleClass="primary-button"/>
     </HBox>

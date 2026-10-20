@@ -53,13 +53,11 @@ public class StatisticsService {
             stats.put("Заказов " + status, byStatus.getOrDefault(status, 0L));
         }
 
-        // average() есть только у потока double; если заказов нет, orElse подставит 0
-        double averageBudget = allOrders.stream()
-                .mapToDouble(o -> o.getBudget().doubleValue())
-                .average()
-                .orElse(0);
-        // Округляем до копеек: 2 знака после запятой, HALF_UP — по школьному правилу (0.5 вверх)
-        stats.put("Средний бюджет", BigDecimal.valueOf(averageBudget).setScale(2, RoundingMode.HALF_UP));
+        // Считаем десятичные деньги без промежуточного double и округляем один раз.
+        BigDecimal totalBudget = allOrders.stream().map(Order::getBudget).reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal averageBudget = allOrders.isEmpty() ? new BigDecimal("0.00")
+                : totalBudget.divide(BigDecimal.valueOf(allOrders.size()), 2, RoundingMode.HALF_UP);
+        stats.put("Средний бюджет", averageBudget);
 
         // Деньги складываем в BigDecimal: в double копейки теряются на округлении
         BigDecimal activeBudget = allOrders.stream()

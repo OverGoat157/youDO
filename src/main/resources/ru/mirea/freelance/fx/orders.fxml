@@ -23,16 +23,16 @@
 
     <Label text="Заказы" styleClass="page-title"/>
 
-    <HBox spacing="8" alignment="CENTER_LEFT" styleClass="toolbar">
+    <FlowPane hgap="8" vgap="8" alignment="CENTER_LEFT" styleClass="toolbar">
         <TextField fx:id="searchField" promptText="Поиск по названию и описанию" onAction="#onSearch"
-                   HBox.hgrow="ALWAYS"/>
+                   prefWidth="260"/>
         <Label text="Статус:"/>
-        <ComboBox fx:id="statusFilter" prefWidth="140"/>
+        <ComboBox fx:id="statusFilter" prefWidth="170"/>
         <Label text="Категория:"/>
-        <ComboBox fx:id="categoryFilter" prefWidth="140"/>
-        <Button text="Найти" onAction="#onSearch" styleClass="primary-button"/>
-        <Button text="Сбросить" onAction="#onReset"/>
-    </HBox>
+        <ComboBox fx:id="categoryFilter" prefWidth="170"/>
+        <Button fx:id="searchButton" text="Найти" onAction="#onSearch" styleClass="primary-button"/>
+        <Button fx:id="resetButton" text="Сбросить" onAction="#onReset"/>
+    </FlowPane>
 
     <FlowPane hgap="8" vgap="8" alignment="CENTER_LEFT" styleClass="toolbar">
         <Button fx:id="createButton" text="Создать" onAction="#onCreate" styleClass="primary-button"/>
@@ -42,7 +42,7 @@
         <Button fx:id="assignButton" text="Назначить исполнителя" onAction="#onAssign"/>
         <Button fx:id="statusButton" text="Сменить статус" onAction="#onChangeStatus"/>
         <Separator orientation="VERTICAL"/>
-        <Button text="Экспорт CSV" onAction="#onExport"/>
+        <Button fx:id="exportButton" text="Экспорт CSV" onAction="#onExport"/>
         <Button fx:id="refreshButton" text="Обновить" onAction="#onRefresh"/>
         <ProgressIndicator fx:id="progress" prefWidth="20" prefHeight="20" visible="false" managed="false"/>
         <Label fx:id="countLabel" styleClass="status-label"/>

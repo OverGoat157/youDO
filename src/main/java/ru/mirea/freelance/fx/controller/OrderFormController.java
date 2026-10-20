@@ -21,12 +21,14 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.time.format.ResolverStyle;
 import java.util.List;
 import java.util.Objects;
 
 public class OrderFormController {
 
-    private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+    private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd.MM.uuuu")
+            .withResolverStyle(ResolverStyle.STRICT);
 
     private final AppContext context;
     private Order order;
@@ -45,6 +47,8 @@ public class OrderFormController {
     @FXML private Label infoLabel;
     @FXML private Label errorLabel;
     @FXML private Button saveButton;
+    @FXML private Button cancelButton;
+    @FXML private Button retryUsersButton;
 
     public OrderFormController(AppContext context) {
         this.context = context;
@@ -71,29 +75,53 @@ public class OrderFormController {
 
     public void setOrder(Order order) {
         this.order = order;
+        saved = false;
+        usersLoaded = false;
+        hideError();
         boolean creating = order == null;
         headerLabel.setText(creating ? "Новый заказ" : "Изменение заказа");
         show(customerBox, creating);
         show(customerLabel, !creating);
         show(infoLabel, !creating);
-        if (!creating) {
+        if (creating) {
+            titleField.clear();
+            descriptionArea.clear();
+            categoryBox.setValue(null);
+            budgetField.clear();
+            deadlinePicker.setValue(null);
+            customerBox.getItems().clear();
+        } else {
             titleField.setText(order.getTitle());
             descriptionArea.setText(order.getDescription());
             categoryBox.setValue(order.getCategory());
             budgetField.setText(order.getBudget().toPlainString());
             deadlinePicker.setValue(order.getDeadline());
         }
-        updateSaveButton();
-        context.tasks().run(() -> context.users().findAll(), this::showUsers,
-                error -> showError("Не удалось загрузить пользователей: " + OrdersController.messageOf(error)));
+        loadUsers();
     }
 
     public boolean isSaved() {
         return saved;
     }
 
+    public boolean isSaving() {
+        return saving;
+    }
+
+    @FXML
+    private void loadUsers() {
+        usersLoaded = false;
+        updateSaveButton();
+        retryUsersButton.setDisable(true);
+        context.tasks().run(() -> context.users().findAll(), this::showUsers, error -> {
+            retryUsersButton.setDisable(false);
+            showError("Не удалось загрузить пользователей: " + OrdersController.messageOf(error));
+        });
+    }
+
     @FXML
     private void onSave() {
+        if (saving || !usersLoaded) return;
         hideError();
         String title = titleField.getText() == null ? "" : titleField.getText().trim();
         if (title.isEmpty()) {
@@ -120,15 +148,19 @@ public class OrderFormController {
         }
         String text = descriptionArea.getText();
         String description = text == null || text.isBlank() ? null : text.trim();
+        Long orderId = order == null ? null : order.getId();
+        Long customerId = customer == null ? null : customer.getId();
 
         saving = true;
         updateSaveButton();
         context.tasks().run(
-                () -> order == null
-                        ? context.orders().create(title, description, category, budget, deadline, customer.getId())
-                        : context.orders().update(order.getId(), title, description, category, budget, deadline),
+                () -> orderId == null
+                        ? context.orders().create(title, description, category, budget, deadline, customerId)
+                        : context.orders().update(orderId, title, description, category, budget, deadline),
                 result -> {
                     saved = true;
+                    saving = false;
+                    updateSaveButton();
                     close();
                 },
                 error -> {
@@ -140,10 +172,12 @@ public class OrderFormController {
 
     @FXML
     private void onCancel() {
-        close();
+        if (!saving) close();
     }
 
     private void showUsers(List<User> users) {
+        hideError();
+        retryUsersButton.setDisable(false);
         usersLoaded = true;
         if (order == null) {
             customerBox.getItems().setAll(users.stream()
@@ -209,6 +243,14 @@ public class OrderFormController {
 
     private void updateSaveButton() {
         saveButton.setDisable(!usersLoaded || saving);
+        cancelButton.setDisable(saving);
+        retryUsersButton.setDisable(saving);
+        titleField.setDisable(saving);
+        descriptionArea.setDisable(saving);
+        categoryBox.setDisable(saving);
+        budgetField.setDisable(saving);
+        deadlinePicker.setDisable(saving);
+        customerBox.setDisable(saving);
     }
 
     private void fieldError(Node field, String message) {

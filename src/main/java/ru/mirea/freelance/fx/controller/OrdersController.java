@@ -61,6 +61,7 @@ public class OrdersController {
     private final ObservableList<Order> orders = FXCollections.observableArrayList();
     private final NumberFormat money = NumberFormat.getNumberInstance(Locale.forLanguageTag("ru-RU"));
     private final BooleanProperty acting = new SimpleBooleanProperty();
+    private final BooleanProperty fetching = new SimpleBooleanProperty();
     private Map<Long, User> usersById = Map.of();
     private OrderQuery query = new OrderQuery(null, null, null);
     private boolean loading;
@@ -78,6 +79,7 @@ public class OrdersController {
     @FXML private Button assignButton;
     @FXML private Button statusButton;
     @FXML private Button refreshButton;
+    @FXML private Button exportButton;
     @FXML private ProgressIndicator progress;
     @FXML private Label errorLabel;
     @FXML private TableView<Order> table;
@@ -122,12 +124,15 @@ public class OrdersController {
                 .addListener((observable, previous, selected) -> showDetails(selected));
         showDetails(null);
 
-        BooleanBinding unavailable = table.getSelectionModel().selectedItemProperty().isNull().or(acting);
-        createButton.disableProperty().bind(acting);
+        BooleanBinding busy = acting.or(fetching);
+        BooleanBinding unavailable = table.getSelectionModel().selectedItemProperty().isNull().or(busy);
+        createButton.disableProperty().bind(busy);
         editButton.disableProperty().bind(unavailable);
         deleteButton.disableProperty().bind(unavailable);
         assignButton.disableProperty().bind(unavailable);
         statusButton.disableProperty().bind(unavailable);
+        refreshButton.disableProperty().bind(busy);
+        exportButton.disableProperty().bind(busy);
 
         setUpFilter(statusFilter, OrderStatus.values());
         setUpFilter(categoryFilter, OrderCategory.values());
@@ -179,12 +184,13 @@ public class OrdersController {
 
     @FXML
     private void onEdit() {
-        openForm(selected());
+        if (selected() != null) openForm(selected());
     }
 
     @FXML
     private void onDelete() {
         Order order = selected();
+        if (order == null) return;
         if (!Dialogs.confirmDelete(window(), order.getTitle())) {
             return;
         }
@@ -197,6 +203,7 @@ public class OrdersController {
     @FXML
     private void onAssign() {
         Order order = selected();
+        if (order == null) return;
         if (order.getStatus().isFinal()) {
             info("Заказ в статусе " + order.getStatus() + ", исполнителя назначить нельзя.");
             return;
@@ -218,6 +225,7 @@ public class OrdersController {
     @FXML
     private void onChangeStatus() {
         Order order = selected();
+        if (order == null) return;
         OrderStatus current = order.getStatus();
         List<OrderStatus> allowed = Arrays.stream(OrderStatus.values())
                 .filter(current::canTransitionTo)
@@ -259,6 +267,9 @@ public class OrdersController {
         stage.setMinWidth(420);
         stage.setMinHeight(420);
         stage.setScene(scene);
+        stage.setOnCloseRequest(event -> {
+            if (form.isSaving()) event.consume();
+        });
         form.setOrder(order);
         stage.showAndWait();
         if (form.isSaved()) {
@@ -351,6 +362,7 @@ public class OrdersController {
         orders.setAll(snapshot.orders());
         table.sort();
         restoreSelection(selectedId);
+        showDetails(selected());
         placeholderLabel.setText(filtered()
                 ? "Ничего не найдено. Измените условия или нажмите «Сбросить»." : "Заказов нет");
         countLabel.setText((filtered() ? "Найдено: " : "Всего: ") + orders.size());
@@ -386,9 +398,11 @@ public class OrdersController {
     }
 
     private void showError(Throwable error) {
-        errorLabel.setText("Не удалось загрузить заказы: " + messageOf(error));
-        errorLabel.setVisible(true);
-        errorLabel.setManaged(true);
+        if (!refreshAgain) {
+            errorLabel.setText("Не удалось загрузить заказы: " + messageOf(error));
+            errorLabel.setVisible(true);
+            errorLabel.setManaged(true);
+        }
         finish();
     }
 
@@ -402,7 +416,7 @@ public class OrdersController {
     }
 
     private void setBusy(boolean busy) {
-        refreshButton.setDisable(busy);
+        fetching.set(busy);
         progress.setVisible(busy);
         progress.setManaged(busy);
     }
