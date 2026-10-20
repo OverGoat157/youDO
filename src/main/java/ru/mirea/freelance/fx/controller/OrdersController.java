@@ -17,10 +17,12 @@ import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -33,6 +35,7 @@ import ru.mirea.freelance.model.OrderCategory;
 import ru.mirea.freelance.model.OrderStatus;
 import ru.mirea.freelance.model.User;
 import ru.mirea.freelance.model.UserRole;
+import ru.mirea.freelance.service.OrderQuery;
 
 import java.math.BigDecimal;
 import java.text.NumberFormat;
@@ -59,9 +62,16 @@ public class OrdersController {
     private final NumberFormat money = NumberFormat.getNumberInstance(Locale.forLanguageTag("ru-RU"));
     private final BooleanProperty acting = new SimpleBooleanProperty();
     private Map<Long, User> usersById = Map.of();
+    private OrderQuery query = new OrderQuery(null, null, null);
     private boolean loading;
     private boolean refreshAgain;
+    private boolean resetting;
 
+    @FXML private TextField searchField;
+    @FXML private ComboBox<OrderStatus> statusFilter;
+    @FXML private ComboBox<OrderCategory> categoryFilter;
+    @FXML private Label countLabel;
+    @FXML private Label placeholderLabel;
     @FXML private Button createButton;
     @FXML private Button editButton;
     @FXML private Button deleteButton;
@@ -118,6 +128,9 @@ public class OrdersController {
         deleteButton.disableProperty().bind(unavailable);
         assignButton.disableProperty().bind(unavailable);
         statusButton.disableProperty().bind(unavailable);
+
+        setUpFilter(statusFilter, OrderStatus.values());
+        setUpFilter(categoryFilter, OrderCategory.values());
     }
 
     public List<Order> currentOrders() {
@@ -131,8 +144,9 @@ public class OrdersController {
         }
         loading = true;
         setBusy(true);
+        OrderQuery current = query;
         context.tasks().run(
-                () -> new Snapshot(context.orders().findAll(), context.users().findAll()),
+                () -> new Snapshot(context.orders().find(current), context.users().findAll()),
                 this::show,
                 this::showError);
     }
@@ -140,6 +154,22 @@ public class OrdersController {
     @FXML
     private void onRefresh() {
         refresh();
+    }
+
+    @FXML
+    private void onSearch() {
+        query = new OrderQuery(searchField.getText(), statusFilter.getValue(), categoryFilter.getValue());
+        refresh();
+    }
+
+    @FXML
+    private void onReset() {
+        resetting = true;
+        searchField.clear();
+        statusFilter.setValue(null);
+        categoryFilter.setValue(null);
+        resetting = false;
+        onSearch();
     }
 
     @FXML
@@ -281,7 +311,39 @@ public class OrdersController {
         return dialog.showAndWait();
     }
 
+    private <T> void setUpFilter(ComboBox<T> filter, T[] values) {
+        filter.getItems().add(null);
+        filter.getItems().addAll(values);
+        filter.setCellFactory(list -> filterCell(false));
+        filter.setButtonCell(filterCell(true));
+        filter.valueProperty().addListener((observable, previous, value) -> {
+            if (!resetting) {
+                onSearch();
+            }
+        });
+    }
+
+    private static <T> ListCell<T> filterCell(boolean button) {
+        return new ListCell<>() {
+            @Override
+            protected void updateItem(T value, boolean empty) {
+                super.updateItem(value, empty);
+                setText(empty && !button ? null : value == null ? "Все" : value.toString());
+            }
+        };
+    }
+
+    private boolean filtered() {
+        return query.text() != null && !query.text().isBlank()
+                || query.status() != null
+                || query.category() != null;
+    }
+
     private void show(Snapshot snapshot) {
+        if (refreshAgain) {
+            finish();
+            return;
+        }
         Order selected = selected();
         Long selectedId = selected == null ? null : selected.getId();
         usersById = snapshot.users().stream()
@@ -289,6 +351,9 @@ public class OrdersController {
         orders.setAll(snapshot.orders());
         table.sort();
         restoreSelection(selectedId);
+        placeholderLabel.setText(filtered()
+                ? "Ничего не найдено. Измените условия или нажмите «Сбросить»." : "Заказов нет");
+        countLabel.setText((filtered() ? "Найдено: " : "Всего: ") + orders.size());
         hideError();
         finish();
     }
