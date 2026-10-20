@@ -1,0 +1,112 @@
+/* Единый стиль приложения. Владелец файла — модуль «Пользователи и CSS».
+   Классы для FXML: page-title, toolbar, primary-button, danger-button,
+   form-field, field-error, stat-card, status-label. */
+
+.root {
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
+    -fx-font-size: 14px;
+    -fx-base: #f4f6f8;
+    -fx-background: #ffffff;
+    -fx-accent: #1f6feb;
+    -fx-focus-color: #1f6feb;
+    -fx-faint-focus-color: #1f6feb33;
+}
+
+/* Заголовки и подписи */
+.page-title {
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1b2733;
+}
+
+.status-label {
+    -fx-text-fill: #52606d;
+    -fx-font-size: 13px;
+}
+
+.field-error {
+    -fx-text-fill: #b42318;
+    -fx-background-color: #fef3f2;
+    -fx-border-color: #fda29b;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-padding: 6 10 6 10;
+}
+
+/* Контейнеры */
+.toolbar {
+    -fx-padding: 4 0 4 0;
+}
+
+.form-field > .label {
+    -fx-text-fill: #1b2733;
+    -fx-font-weight: bold;
+}
+
+.form-field > .status-label {
+    -fx-font-weight: normal;
+}
+
+.stat-card {
+    -fx-background-color: #eef4ff;
+    -fx-border-color: #c3d6f8;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 12;
+}
+
+/* Кнопки */
+.button {
+    -fx-padding: 6 14 6 14;
+    -fx-cursor: hand;
+}
+
+.button:disabled {
+    -fx-opacity: 0.5;
+    -fx-cursor: default;
+}
+
+.primary-button {
+    -fx-background-color: #1f6feb;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.primary-button:hover {
+    -fx-background-color: #1858bd;
+}
+
+.danger-button {
+    -fx-background-color: #d92d20;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.danger-button:hover {
+    -fx-background-color: #b42318;
+}
+
+/* Поля ввода */
+.text-field, .combo-box {
+    -fx-padding: 4 6 4 6;
+    -fx-font-size: 14px;
+}
+
+/* Таблицы */
+.table-view {
+    -fx-background-color: white;
+    -fx-border-color: #d0d7de;
+}
+
+.table-view .column-header .label {
+    -fx-font-weight: bold;
+}
+
+.table-view .table-row-cell {
+    -fx-cell-size: 30px;
+}
+
+.table-view .placeholder .label {
+    -fx-text-fill: #52606d;
+    -fx-font-size: 15px;
+}
