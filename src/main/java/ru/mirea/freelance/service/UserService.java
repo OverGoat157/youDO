@@ -10,12 +10,15 @@ import ru.mirea.freelance.repository.UserRepository;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 /**
  * Управление пользователями и проверка бизнес-правил независимо от способа
  * хранения.
  */
 public class UserService {
+    private static final Pattern EMAIL = Pattern.compile("[^\\s@]+@[^\\s@]+\\.[^\\s@]+",
+            Pattern.UNICODE_CHARACTER_CLASS);
     private final UserRepository users;
     private final OrderRepository orders;
 
@@ -43,11 +46,10 @@ public class UserService {
     public User update(Long id, String name, String email, UserRole role) {
         User user = getById(id);
         validate(name, email, role, id);
-        user.setName(name.trim());
-        user.setEmail(email.trim());
-        user.setRole(role);
-        users.update(user);
-        return user;
+        validateRoleChange(user, role);
+        User updated = new User(id, name.trim(), email.trim(), role, user.getRating(), user.getRegisteredAt());
+        users.update(updated);
+        return updated;
     }
 
     public void delete(Long id) {
@@ -65,8 +67,8 @@ public class UserService {
         if (name.trim().length() > 100) {
             throw new ValidationException("Имя не длиннее 100 символов, введено " + name.trim().length());
         }
-        if (email == null || !email.contains("@")) {
-            throw new ValidationException("Email должен содержать @: " + email);
+        if (email == null || !EMAIL.matcher(email.trim()).matches()) {
+            throw new ValidationException("Email должен иметь вид name@example.com: " + email);
         }
         if (email.trim().length() > 150) {
             throw new ValidationException("Email не длиннее 150 символов, введено " + email.trim().length());
@@ -78,5 +80,19 @@ public class UserService {
                 .ifPresent(user -> {
                     throw new ValidationException("Пользователь с email " + email.trim() + " уже существует");
                 });
+    }
+
+    private void validateRoleChange(User user, UserRole next) {
+        if (user.getRole() == next) {
+            return;
+        }
+        if (next == UserRole.FREELANCER && !orders.findByCustomerId(user.getId()).isEmpty()) {
+            throw new BusinessException("Нельзя изменить роль: пользователь является заказчиком "
+                    + "в существующих заказах, включая завершённые.");
+        }
+        if (next == UserRole.CUSTOMER && !orders.findByFreelancerId(user.getId()).isEmpty()) {
+            throw new BusinessException("Нельзя изменить роль: пользователь назначен исполнителем "
+                    + "в существующих заказах, включая завершённые.");
+        }
     }
 }

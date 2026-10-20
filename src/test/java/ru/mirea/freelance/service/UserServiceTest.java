@@ -9,6 +9,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import ru.mirea.freelance.exception.BusinessException;
 import ru.mirea.freelance.exception.EntityNotFoundException;
 import ru.mirea.freelance.exception.ValidationException;
+import ru.mirea.freelance.exception.DatabaseException;
 import ru.mirea.freelance.model.*;
 import ru.mirea.freelance.repository.InMemoryOrderRepository;
 import ru.mirea.freelance.repository.InMemoryUserRepository;
@@ -155,6 +156,89 @@ class UserServiceTest {
         service.delete(customer.getId());
         assertFalse(users.existsById(customer.getId()));
         assertTrue(users.existsById(freelancer.getId()));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"@example.com", "name@", "a@@example.com", "a b@example.com", "a@example", "a@exam ple.com"})
+    void createAndUpdate_rejectMalformedEmailWithoutChangingTheUser(String email) {
+        assertThrows(ValidationException.class, () -> service.create("Имя", email, UserRole.CUSTOMER));
+        assertThrows(ValidationException.class,
+                () -> service.update(customer.getId(), "Другое имя", email, UserRole.CUSTOMER));
+        assertEquals("Заказчик", customer.getName());
+        assertEquals("customer@example.com", service.getById(customer.getId()).getEmail());
+    }
+
+    @Test
+    void createAndUpdate_acceptNameAndEmailLengthBoundaries() {
+        String name = "И".repeat(100);
+        String email = "a".repeat(138) + "@example.org";
+        assertEquals(150, email.length());
+        User user = service.create(" " + name + " ", " " + email + " ", UserRole.CUSTOMER);
+        assertEquals(name, user.getName());
+        assertEquals(email, user.getEmail());
+        User updated = service.update(user.getId(), name, " " + email + " ", UserRole.CUSTOMER);
+        assertEquals(email, updated.getEmail());
+        assertThrows(ValidationException.class,
+                () -> service.update(user.getId(), name + "И", email, UserRole.CUSTOMER));
+        assertThrows(ValidationException.class,
+                () -> service.update(user.getId(), name, "a" + email, UserRole.CUSTOMER));
+        assertEquals(name, service.getById(user.getId()).getName());
+        assertEquals(email, service.getById(user.getId()).getEmail());
+    }
+
+    @ParameterizedTest
+    @EnumSource(OrderStatus.class)
+    void changingLinkedRolesIsRejectedForBothParticipantsIncludingFinalOrders(OrderStatus status) {
+        saveOrder(status);
+        for (User user : new User[] {customer, freelancer}) {
+            UserRole originalRole = user.getRole();
+            String originalName = user.getName();
+            String originalEmail = user.getEmail();
+            UserRole next = originalRole == UserRole.CUSTOMER ? UserRole.FREELANCER : UserRole.CUSTOMER;
+            BusinessException error = assertThrows(BusinessException.class,
+                    () -> service.update(user.getId(), "Новое имя", "new@example.org", next));
+            assertTrue(error.getMessage().contains(originalRole == UserRole.CUSTOMER ? "заказчиком" : "исполнителем"));
+            User stored = service.getById(user.getId());
+            assertEquals(originalRole, stored.getRole());
+            assertEquals(originalName, stored.getName());
+            assertEquals(originalEmail, stored.getEmail());
+        }
+    }
+
+    @Test
+    void linkedUsersCanKeepTheirRolesAndEditOtherFields() {
+        saveOrder(OrderStatus.COMPLETED);
+        customer.setRating(4.5);
+        LocalDate registered = customer.getRegisteredAt();
+        User updated = service.update(customer.getId(), "Новое имя", "edited@example.org", UserRole.CUSTOMER);
+        assertEquals("Новое имя", service.getById(customer.getId()).getName());
+        assertEquals("edited@example.org", updated.getEmail());
+        assertEquals(UserRole.CUSTOMER, updated.getRole());
+        assertEquals(4.5, updated.getRating());
+        assertEquals(registered, updated.getRegisteredAt());
+    }
+
+    @Test
+    void unlinkedUsersCanChangeRoles() {
+        assertEquals(UserRole.FREELANCER, service.update(customer.getId(), customer.getName(),
+                customer.getEmail(), UserRole.FREELANCER).getRole());
+        assertEquals(UserRole.CUSTOMER, service.update(freelancer.getId(), freelancer.getName(),
+                freelancer.getEmail(), UserRole.CUSTOMER).getRole());
+    }
+
+    @Test
+    void failedDatabaseWriteDoesNotChangeThePreviouslyReadUser() {
+        InMemoryUserRepository repository = new InMemoryUserRepository() {
+            @Override
+            public void update(User user) { throw new DatabaseException("Запись недоступна"); }
+        };
+        UserService isolated = new UserService(repository, orders);
+        User original = isolated.create("Анна", "anna@example.org", UserRole.CUSTOMER);
+        assertThrows(DatabaseException.class, () -> isolated.update(original.getId(), "Новое имя",
+                "new@example.org", UserRole.FREELANCER));
+        assertEquals("Анна", original.getName());
+        assertEquals("anna@example.org", repository.findById(original.getId()).orElseThrow().getEmail());
+        assertEquals(UserRole.CUSTOMER, original.getRole());
     }
 
     private void saveOrder(OrderStatus status) {

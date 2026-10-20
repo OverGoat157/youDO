@@ -6,7 +6,6 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
-import ru.mirea.freelance.fx.controller.StatisticsController;
 
 import java.net.URL;
 
@@ -30,11 +29,6 @@ public class FxApplication extends Application {
             stage.setMinHeight(560);
             stage.setScene(scene);
             stage.show();
-            if (!mainReady) {
-                StatisticsController statistics = (StatisticsController)
-                        loader.getNamespace().get("statisticsViewController");
-                statistics.refresh();
-            }
         } catch (RuntimeException error) {
             if (context != null) {
                 context.close();
