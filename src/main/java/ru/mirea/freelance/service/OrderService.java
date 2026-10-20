@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 
 /** Операции с заказами; хранилище передаётся через интерфейс. */
 public class OrderService {
@@ -44,6 +45,22 @@ public class OrderService {
         return orders.findAll();
     }
 
+    /** Текст ищется в названии ИЛИ описании; все заданные условия применяются вместе. */
+    public List<Order> find(OrderQuery query) {
+        if (query == null) {
+            throw new ValidationException("Не заданы условия поиска заказов.");
+        }
+        String text = query.text() == null ? "" : query.text().trim().toLowerCase(Locale.ROOT);
+        return orders.findAll().stream()
+                .filter(order -> text.isEmpty()
+                        || order.getTitle().toLowerCase(Locale.ROOT).contains(text)
+                        || order.getDescription() != null
+                        && order.getDescription().toLowerCase(Locale.ROOT).contains(text))
+                .filter(order -> query.status() == null || order.getStatus() == query.status())
+                .filter(order -> query.category() == null || order.getCategory() == query.category())
+                .toList();
+    }
+
     public Order getById(Long id) {
         if (id == null) {
             throw new EntityNotFoundException("Заказ", id);
@@ -56,6 +73,8 @@ public class OrderService {
         Order order = getById(id);
         validate(title, budget, deadline);
         validateCategory(category);
+        // Не меняем объект, возвращённый репозиторием, до успешной записи.
+        order = copy(order);
         order.setTitle(title.trim());
         order.setDescription(description);
         order.setCategory(category);
@@ -84,6 +103,7 @@ public class OrderService {
             throw new BusinessException("Нельзя назначить исполнителя на заказ с ID " + orderId
                     + " в статусе " + order.getStatus());
         }
+        order = copy(order);
         order.setFreelancerId(freelancerId);
         orders.update(order);
         return order;
@@ -98,6 +118,7 @@ public class OrderService {
         if (next == OrderStatus.IN_PROGRESS && order.getFreelancerId() == null) {
             throw new BusinessException("Нельзя взять в работу заказ без исполнителя: заказ с ID " + orderId);
         }
+        order = copy(order);
         order.setStatus(next);
         orders.update(order);
         return order;
@@ -173,6 +194,12 @@ public class OrderService {
         return users.findById(id).orElseThrow(() -> new EntityNotFoundException("Пользователь", id));
     }
 
+    private Order copy(Order order) {
+        return new Order(order.getId(), order.getTitle(), order.getDescription(), order.getCategory(),
+                order.getBudget(), order.getDeadline(), order.getStatus(), order.getCustomerId(),
+                order.getFreelancerId(), order.getCreatedAt());
+    }
+
     private void validate(String title, BigDecimal budget, LocalDate deadline) {
         if (title == null || title.trim().isEmpty()) {
             throw new ValidationException("Название заказа не может быть пустым: " + title);
@@ -186,6 +213,10 @@ public class OrderService {
         if (budget.compareTo(MAX_BUDGET) > 0) {
             throw new ValidationException(
                     "Бюджет не больше " + MAX_BUDGET.toPlainString() + ": " + budget.toPlainString());
+        }
+        if (budget.stripTrailingZeros().scale() > 2) {
+            throw new ValidationException("Бюджет допускает не более двух знаков после запятой: "
+                    + budget.toPlainString());
         }
         if (deadline == null) {
             throw new ValidationException("Дедлайн не задан: " + deadline);

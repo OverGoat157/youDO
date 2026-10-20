@@ -9,6 +9,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import ru.mirea.freelance.exception.BusinessException;
 import ru.mirea.freelance.exception.EntityNotFoundException;
 import ru.mirea.freelance.exception.ValidationException;
+import ru.mirea.freelance.exception.DatabaseException;
 import ru.mirea.freelance.model.*;
 import ru.mirea.freelance.repository.InMemoryOrderRepository;
 import ru.mirea.freelance.repository.InMemoryUserRepository;
@@ -19,6 +20,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.Locale;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -435,6 +438,141 @@ class OrderServiceTest {
         }
     }
 
+    @Test
+    void find_combinesTextStatusAndCategoryWithoutLosingMatchesFromEitherField() {
+        Order byDescription = service.create("Логотип", "Нужен САЙТ", OrderCategory.DESIGN,
+                BigDecimal.TEN, deadline, customer.getId());
+        Order byTitle = service.create("Сайт кофейни", null, OrderCategory.DESIGN,
+                BigDecimal.TEN, deadline, customer.getId());
+        Order wrongStatus = service.create("Сайт", "", OrderCategory.DESIGN,
+                BigDecimal.TEN, deadline, customer.getId());
+        service.assignFreelancer(wrongStatus.getId(), freelancer.getId());
+        service.changeStatus(wrongStatus.getId(), OrderStatus.IN_PROGRESS);
+        service.create("Сайт", "", OrderCategory.MARKETING, BigDecimal.TEN, deadline, customer.getId());
+        service.create("Другое", null, OrderCategory.DESIGN, BigDecimal.TEN, deadline, customer.getId());
+
+        assertEquals(Set.of(byDescription, byTitle), new HashSet<>(service.find(
+                new OrderQuery("  сАйТ  ", OrderStatus.OPEN, OrderCategory.DESIGN))));
+        assertTrue(service.find(new OrderQuery("несуществующее слово", null, null)).isEmpty());
+        assertTrue(service.find(new OrderQuery("сайт", OrderStatus.CANCELLED, OrderCategory.DESIGN)).isEmpty());
+        assertEquals(5, service.find(new OrderQuery("", null, null)).size());
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"   "})
+    void find_emptyTextAndOptionalFiltersAreIndependent(String text) {
+        List<Order> sample = createSearchOrders();
+        assertEquals(3, service.find(new OrderQuery(text, null, null)).size());
+        assertEquals(List.of(sample.get(1)), service.find(new OrderQuery(text, OrderStatus.IN_PROGRESS, null)));
+        assertEquals(List.of(sample.get(1)), service.find(new OrderQuery(text, null, OrderCategory.DESIGN)));
+    }
+
+    @Test
+    void find_readsRepositoryOnceAndDoesNotModifyStoredOrders() {
+        AtomicInteger reads = new AtomicInteger();
+        InMemoryOrderRepository repository = new InMemoryOrderRepository() {
+            @Override
+            public List<Order> findAll() {
+                reads.incrementAndGet();
+                return super.findAll();
+            }
+        };
+        OrderService isolated = new OrderService(repository, users);
+        Order order = isolated.create("САЙТ", null, OrderCategory.OTHER, BigDecimal.TEN, deadline, customer.getId());
+        order.setDeadline(LocalDate.now().minusDays(1));
+        assertEquals(List.of(order), isolated.find(new OrderQuery("сайт", OrderStatus.OPEN, OrderCategory.OTHER)));
+        assertEquals(1, reads.get());
+        assertEquals("САЙТ", order.getTitle());
+        assertTrue(order.getDeadline().isBefore(LocalDate.now()));
+    }
+
+    @Test
+    void find_caseConversionDoesNotDependOnSystemLocale() {
+        Order order = service.create("DESIGN", null, OrderCategory.DESIGN, BigDecimal.TEN, deadline, customer.getId());
+        Locale previous = Locale.getDefault();
+        try {
+            Locale.setDefault(Locale.forLanguageTag("tr-TR"));
+            assertEquals(List.of(order), service.find(new OrderQuery("design", null, null)));
+        } finally {
+            Locale.setDefault(previous);
+        }
+    }
+
+    @Test
+    void find_emptyRepositoryReturnsEmptyAndNullQueryExplainsTheError() {
+        assertTrue(service.find(new OrderQuery(null, null, null)).isEmpty());
+        assertTrue(assertThrows(ValidationException.class, () -> service.find(null))
+                .getMessage().contains("поиска"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0.001", "10.999", "123.45001", "0.00010"})
+    void createAndUpdate_rejectExtraKopecksWithoutChangingStoredOrder(String value) {
+        BigDecimal amount = new BigDecimal(value);
+        ValidationException error = assertThrows(ValidationException.class,
+                () -> service.create("Заказ", "", OrderCategory.OTHER, amount, deadline, customer.getId()));
+        assertTrue(error.getMessage().contains("двух знаков"));
+        Order order = createOrder();
+        assertThrows(ValidationException.class,
+                () -> service.update(order.getId(), "Другое", "Новое", OrderCategory.DESIGN, amount, deadline));
+        assertEquals("Заказ", service.getById(order.getId()).getTitle());
+        assertEquals(BigDecimal.TEN, service.getById(order.getId()).getBudget());
+        assertEquals("Описание", order.getDescription());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0.01", "9999999999.99", "1.2300", "1E+3", "9999999999.9900"})
+    void createAndUpdate_acceptBudgetBoundariesAndInsignificantZeros(String value) {
+        BigDecimal amount = new BigDecimal(value);
+        Order order = service.create("Заказ", "", OrderCategory.OTHER, amount, deadline, customer.getId());
+        assertEquals(0, amount.compareTo(service.getById(order.getId()).getBudget()));
+        assertEquals(0, amount.compareTo(service.update(order.getId(), "Другой", "", OrderCategory.DESIGN,
+                amount, deadline).getBudget()));
+    }
+
+    @Test
+    void createAndUpdate_acceptTitleBoundaryAndRejectNextCharacter() {
+        String boundary = "З".repeat(150);
+        Order order = service.create(" " + boundary + " ", "", OrderCategory.OTHER,
+                BigDecimal.ONE, deadline, customer.getId());
+        assertEquals(boundary, order.getTitle());
+        assertEquals(boundary, service.update(order.getId(), boundary, "", OrderCategory.OTHER,
+                BigDecimal.ONE, deadline).getTitle());
+        assertThrows(ValidationException.class, () -> service.update(order.getId(), boundary + "З", "",
+                OrderCategory.OTHER, BigDecimal.ONE, deadline));
+        assertEquals(boundary, service.getById(order.getId()).getTitle());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"update", "assign", "status"})
+    void failedWriteDoesNotMutateAnObjectAlreadyReturnedToTheCaller(String operation) {
+        InMemoryOrderRepository repository = new InMemoryOrderRepository() {
+            @Override
+            public void update(Order order) { throw new DatabaseException("Запись недоступна"); }
+        };
+        OrderService isolated = new OrderService(repository, users);
+        Order order = isolated.create("Заказ", "Описание", OrderCategory.OTHER,
+                BigDecimal.TEN, deadline, customer.getId());
+        if (operation.equals("status")) order.setFreelancerId(freelancer.getId());
+        Long beforeFreelancer = order.getFreelancerId();
+        assertThrows(DatabaseException.class, () -> {
+            switch (operation) {
+                case "update" -> isolated.update(order.getId(), "Новое", "Другое", OrderCategory.DESIGN,
+                        BigDecimal.ONE, deadline.plusDays(1));
+                case "assign" -> isolated.assignFreelancer(order.getId(), freelancer.getId());
+                case "status" -> isolated.changeStatus(order.getId(), OrderStatus.IN_PROGRESS);
+                default -> throw new AssertionError(operation);
+            }
+        });
+        assertEquals("Заказ", order.getTitle());
+        assertEquals("Описание", order.getDescription());
+        assertEquals(BigDecimal.TEN, order.getBudget());
+        assertEquals(deadline, order.getDeadline());
+        assertEquals(OrderStatus.OPEN, order.getStatus());
+        assertEquals(beforeFreelancer, order.getFreelancerId());
+    }
+
     private List<Order> createSearchOrders() {
         Order low = service.create("Первый", "", OrderCategory.OTHER, new BigDecimal("10.00"), deadline,
                 customer.getId());
@@ -443,7 +581,7 @@ class OrderServiceTest {
         Order high = service.create("Третий", "", OrderCategory.OTHER, new BigDecimal("30"), deadline.plusDays(2),
                 customer.getId());
         service.assignFreelancer(mid.getId(), freelancer.getId());
-        service.changeStatus(mid.getId(), OrderStatus.IN_PROGRESS);
+        mid = service.changeStatus(mid.getId(), OrderStatus.IN_PROGRESS);
         high.setStatus(OrderStatus.COMPLETED);
         LocalDateTime start = LocalDateTime.of(2026, 1, 1, 12, 0);
         low.setCreatedAt(start.plusHours(2));
