@@ -90,6 +90,7 @@ public class UsersController {
         Long selectedId = table.getSelectionModel().getSelectedItem() == null
                 ? null : table.getSelectionModel().getSelectedItem().getId();
         users.setAll(loaded);
+        table.sort();
         if (selectedId != null) {
             users.stream().filter(u -> selectedId.equals(u.getId())).findFirst()
                     .ifPresent(u -> table.getSelectionModel().select(u));
@@ -171,6 +172,11 @@ public class UsersController {
             scene.getStylesheets().addAll(table.getScene().getStylesheets());
             stage.setScene(scene);
             stage.setMinWidth(420);
+            stage.setOnCloseRequest(event -> {
+                if (form.isSaving()) {
+                    event.consume();
+                }
+            });
             stage.showAndWait();
 
             if (form.isSaved()) {

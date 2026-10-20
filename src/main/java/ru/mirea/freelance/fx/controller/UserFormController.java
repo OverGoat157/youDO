@@ -62,6 +62,7 @@ public class UserFormController {
     /** null — создание нового пользователя, иначе форма заполняется текущими значениями. */
     public void setUser(User user) {
         this.user = user;
+        saved = false;
         hideError();
         if (user == null) {
             titleLabel.setText("Новый пользователь");
@@ -82,6 +83,10 @@ public class UserFormController {
 
     public boolean isSaved() {
         return saved;
+    }
+
+    public boolean isSaving() {
+        return saving;
     }
 
     @FXML
@@ -124,6 +129,9 @@ public class UserFormController {
         saving = value;
         saveButton.setDisable(value);
         cancelButton.setDisable(value);
+        nameField.setDisable(value);
+        emailField.setDisable(value);
+        roleBox.setDisable(value);
         progress.setVisible(value);
         progress.setManaged(value);
     }
