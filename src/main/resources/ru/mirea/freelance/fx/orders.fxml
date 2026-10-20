@@ -6,6 +6,8 @@
 <?import javafx.scene.control.ProgressIndicator?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
@@ -40,4 +42,22 @@
             <TableColumn fx:id="freelancerColumn" text="Исполнитель" prefWidth="150"/>
         </columns>
     </TableView>
+
+    <Label fx:id="noSelectionLabel" text="Выберите заказ в таблице, чтобы увидеть подробности"
+           styleClass="status-label"/>
+
+    <GridPane fx:id="details" hgap="12" vgap="6" visible="false" managed="false">
+        <columnConstraints>
+            <ColumnConstraints minWidth="110"/>
+            <ColumnConstraints hgrow="ALWAYS"/>
+        </columnConstraints>
+        <Label text="Описание:" GridPane.rowIndex="0" GridPane.columnIndex="0" GridPane.valignment="TOP"/>
+        <Label fx:id="descriptionLabel" wrapText="true" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+        <Label text="Заказчик:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+        <Label fx:id="customerLabel" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+        <Label text="Исполнитель:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+        <Label fx:id="freelancerLabel" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+        <Label text="Создан:" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+        <Label fx:id="createdLabel" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+    </GridPane>
 </VBox>

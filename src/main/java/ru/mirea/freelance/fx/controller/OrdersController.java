@@ -10,6 +10,7 @@ import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.layout.GridPane;
 import ru.mirea.freelance.fx.AppContext;
 import ru.mirea.freelance.model.Order;
 import ru.mirea.freelance.model.OrderCategory;
@@ -29,6 +30,7 @@ import java.util.stream.Collectors;
 public class OrdersController {
 
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+    private static final DateTimeFormatter DATE_TIME = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
     private final AppContext context;
     private final ObservableList<Order> orders = FXCollections.observableArrayList();
@@ -48,6 +50,12 @@ public class OrdersController {
     @FXML private TableColumn<Order, OrderStatus> statusColumn;
     @FXML private TableColumn<Order, String> customerColumn;
     @FXML private TableColumn<Order, String> freelancerColumn;
+    @FXML private Label noSelectionLabel;
+    @FXML private GridPane details;
+    @FXML private Label descriptionLabel;
+    @FXML private Label customerLabel;
+    @FXML private Label freelancerLabel;
+    @FXML private Label createdLabel;
 
     private record Snapshot(List<Order> orders, List<User> users) {
     }
@@ -72,6 +80,13 @@ public class OrdersController {
         freelancerColumn.setCellValueFactory(cell -> new ReadOnlyObjectWrapper<>(
                 userName(cell.getValue().getFreelancerId())));
         table.setItems(orders);
+        table.getSelectionModel().selectedItemProperty()
+                .addListener((observable, previous, selected) -> showDetails(selected));
+        showDetails(null);
+    }
+
+    public List<Order> currentOrders() {
+        return List.copyOf(table.getItems());
     }
 
     @FXML
@@ -93,11 +108,42 @@ public class OrdersController {
     }
 
     private void show(Snapshot snapshot) {
+        Order selected = table.getSelectionModel().getSelectedItem();
+        Long selectedId = selected == null ? null : selected.getId();
         usersById = snapshot.users().stream()
                 .collect(Collectors.toMap(User::getId, Function.identity()));
         orders.setAll(snapshot.orders());
+        table.sort();
+        restoreSelection(selectedId);
         hideError();
         finish();
+    }
+
+    private void restoreSelection(Long id) {
+        orders.stream()
+                .filter(order -> order.getId().equals(id))
+                .findFirst()
+                .ifPresentOrElse(order -> {
+                    table.getSelectionModel().select(order);
+                    table.scrollTo(order);
+                }, () -> table.getSelectionModel().clearSelection());
+    }
+
+    private void showDetails(Order order) {
+        boolean selected = order != null;
+        details.setVisible(selected);
+        details.setManaged(selected);
+        noSelectionLabel.setVisible(!selected);
+        noSelectionLabel.setManaged(!selected);
+        if (!selected) {
+            return;
+        }
+        String description = order.getDescription();
+        descriptionLabel.setText(description == null || description.isBlank() ? "Без описания" : description);
+        customerLabel.setText(userContact(order.getCustomerId()));
+        freelancerLabel.setText(order.getFreelancerId() == null
+                ? "Не назначен" : userContact(order.getFreelancerId()));
+        createdLabel.setText(order.getCreatedAt() == null ? "—" : DATE_TIME.format(order.getCreatedAt()));
     }
 
     private void showError(Throwable error) {
@@ -132,6 +178,11 @@ public class OrdersController {
     private String userName(Long id) {
         User user = id == null ? null : usersById.get(id);
         return user == null ? "—" : user.getName();
+    }
+
+    private String userContact(Long id) {
+        User user = id == null ? null : usersById.get(id);
+        return user == null ? "—" : user.getName() + " — " + user.getEmail();
     }
 
     private static <T> TableCell<Order, T> formattedCell(Function<T, String> format) {
