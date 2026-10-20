@@ -26,12 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class FxInfrastructureTest {
     @BeforeAll
     static void startToolkit() throws Exception {
-        CountDownLatch ready = new CountDownLatch(1);
-        Platform.startup(() -> {
-            Platform.setImplicitExit(false);
-            ready.countDown();
-        });
-        assertTrue(ready.await(10, TimeUnit.SECONDS));
+        FxTestSupport.startToolkit();
     }
 
     private static <T> T onFx(Callable<T> work) throws Exception {
