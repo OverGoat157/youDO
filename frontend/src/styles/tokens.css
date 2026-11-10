@@ -1,0 +1,6 @@
+:root {
+  color-scheme: light;
+  --canvas: #f5f7fb; --ink: #192b43; --muted: #526179;
+  --primary: #2456a8; --primary-hover: #183e7d; --focus: #9a5700;
+  --border: #d9e1ec; --border-strong: #8091a9; --danger: #b32739;
+}

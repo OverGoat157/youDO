@@ -1,0 +1,32 @@
+# Separate test-only database. No published ports or access to the application's volume.
+name: youdo-kr3-verify
+services:
+  test-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: youdo_test
+      POSTGRES_USER: youdo_test
+      POSTGRES_PASSWORD: isolated-test-password
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U youdo_test -d youdo_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  verify:
+    image: maven:3.9.9-eclipse-temurin-21-jammy
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+    working_dir: /workspace
+    environment:
+      MAVEN_CONFIG: /maven-cache
+      TEST_DB_URL: jdbc:postgresql://test-db:5432/youdo_test
+      TEST_DB_USER: youdo_test
+      TEST_DB_PASSWORD: isolated-test-password
+    depends_on:
+      test-db:
+        condition: service_healthy
+    volumes:
+      - ..:/workspace
+      - ${MAVEN_CACHE_DIR:-/tmp/youdo-kr3-maven}:/maven-cache
+    command: ["mvn", "-B", "-Dmaven.repo.local=/maven-cache", "-f", "backend/pom.xml", "test"]

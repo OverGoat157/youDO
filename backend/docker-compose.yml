@@ -1,0 +1,47 @@
+name: youdo-kr3
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-youdo_backend}
+      POSTGRES_USER: ${DB_USER:-youdo_backend}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Generate backend/.env first}
+    ports:
+      - "127.0.0.1:${DB_PORT:-55433}:5432"
+    volumes:
+      - backend_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/${DB_NAME:-youdo_backend}
+      DB_USER: ${DB_USER:-youdo_backend}
+      DB_PASSWORD: ${DB_PASSWORD:?Generate backend/.env first}
+      JWT_SECRET: ${JWT_SECRET:?Generate backend/.env first}
+      BOOTSTRAP_ADMIN_LOGIN: ${BOOTSTRAP_ADMIN_LOGIN:-}
+      BOOTSTRAP_ADMIN_NAME: ${BOOTSTRAP_ADMIN_NAME:-Администратор}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173}
+      PERMANENT_DELETE_ENABLED: ${PERMANENT_DELETE_ENABLED:-false}
+    ports:
+      - "127.0.0.1:${HTTP_PORT:-8080}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8080/actuator/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 30s
+    restart: unless-stopped
+volumes:
+  backend_data:
