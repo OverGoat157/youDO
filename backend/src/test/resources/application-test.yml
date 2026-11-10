@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: ${TEST_DB_URL:jdbc:postgresql://localhost:55434/youdo_test}
+    username: ${TEST_DB_USER:youdo_test}
+    password: ${TEST_DB_PASSWORD:isolated-test-password}
+    hikari:
+      connection-init-sql: SET search_path TO auth_tests
+  flyway:
+    schemas: auth_tests
+    default-schema: auth_tests
+  jpa:
+    properties:
+      hibernate.default_schema: auth_tests
+youdo:
+  jwt-secret: dGVzdC1vbmx5LTMyaHl0ZS1zZWNyZXQtbm90LWZvci1wcm9kLXNldHVw
+  bootstrap:
+    login: ''
+    password: ''
+logging:
+  level:
+    root: WARN
