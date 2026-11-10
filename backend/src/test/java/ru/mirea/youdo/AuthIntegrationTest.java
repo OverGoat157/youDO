@@ -40,7 +40,6 @@ class AuthIntegrationTest {
     @Autowired AccountCredentialsStore accounts;
     @Autowired AuthService auth;
     @Autowired TokenService tokens;
-    @Autowired SessionRevoker revoker;
     @Autowired AuditWriter audit;
     @Autowired PlatformTransactionManager transactions;
     @Autowired YoudoProperties properties;
@@ -81,7 +80,7 @@ class AuthIntegrationTest {
             .content(json.writeValueAsString(Map.of("clientType","ANDROID","refreshToken",token))));
     }
     @Test void contextAndFlywayUsePostgres() {
-        assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history where success and version is not null",Integer.class)).isEqualTo(3);
+        assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history where success and version is not null",Integer.class)).isEqualTo(4);
         assertThat(jdbc.queryForObject("select count(*) from categories",Integer.class)).isEqualTo(5);
     }
     @Test void loginMeHashAndCorrelation() throws Exception {
@@ -162,23 +161,45 @@ class AuthIntegrationTest {
         String expired=new TokenService(properties,future).access(accounts.findById(id).orElseThrow());
         mvc.perform(get("/api/auth/me").header("Authorization","Bearer "+expired)).andExpect(status().isUnauthorized());
     }
-    @Test void roleChangeCredentialsVersionAndDisableInvalidateTokens() throws Exception {
-        UUID id=account("ADMIN",false);
-        var logged=login("ADMIN");
-        new TransactionTemplate(transactions).executeWithoutResult(s -> {
-            accounts.lock(id);
-            jdbc.update("update account_roles set role='VIEWER' where account_id=?",id);
-            jdbc.update("update user_accounts set credentials_version=credentials_version+1 where id=?",id);
-            revoker.revokeAll(id);
-        });
-        mvc.perform(get("/api/admin/_probe").header("Authorization","Bearer "+logged.path("accessToken").asText())).andExpect(status().isUnauthorized());
-        session("refresh",logged.path("refreshToken").asText()).andExpect(status().isUnauthorized());
-        var renewed=login("ADMIN"); // login name is unchanged; effective roles now VIEWER.
-        mvc.perform(get("/api/admin/_probe").header("Authorization","Bearer "+renewed.path("accessToken").asText())).andExpect(status().isForbidden());
-        jdbc.update("update user_accounts set active=false where id=?",id);
-        mvc.perform(get("/api/auth/me").header("Authorization","Bearer "+renewed.path("accessToken").asText())).andExpect(status().isUnauthorized());
-        session("refresh",renewed.path("refreshToken").asText()).andExpect(status().isUnauthorized());
-        loginBody("admin@example.org",PASSWORD,"ANDROID",null,null,401);
+    @Test void accountAdministrationRevokesRealSessionsAndRecordsAudit() throws Exception {
+        account("ADMIN", false);
+        String admin = "Bearer " + login("ADMIN").path("accessToken").asText();
+        var created = mvc.perform(post("/api/admin/users").header("Authorization", admin)
+            .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of(
+                "name", "Редактор", "login", "editor@example.org", "roles", List.of("EDITOR"), "temporaryPassword", PASSWORD))))
+            .andExpect(status().isCreated()).andExpect(jsonPath("$.mustChangePassword").value(true))
+            .andExpect(jsonPath("$.passwordHash").doesNotExist()).andReturn();
+        UUID id = UUID.fromString(json.readTree(created.getResponse().getContentAsString()).path("id").asText());
+        var temporary = login("EDITOR");
+        mvc.perform(post("/api/auth/change-password").header("Authorization", "Bearer " + temporary.path("accessToken").asText())
+            .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(new ChangePasswordRequest(PASSWORD, NEXT))))
+            .andExpect(status().isNoContent());
+
+        var logged = loginBody("editor@example.org", NEXT, "ANDROID", null, null, 200);
+        String endpoint = "/api/admin/users/" + id;
+        var roleChange = new HashMap<String, Object>(Map.of(
+            "name", "Редактор", "login", "editor@example.org", "roles", List.of("VIEWER")));
+        roleChange.put("active", true);
+        mvc.perform(put(endpoint).header("Authorization", admin).header("X-Correlation-ID", "role-change")
+            .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(roleChange)))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.credentialsVersion").value(2));
+        assertThat(jdbc.queryForObject("select correlation_id from audit_events where action='ACCOUNT_UPDATED'", String.class))
+            .isEqualTo("role-change");
+        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + logged.path("accessToken").asText()))
+            .andExpect(status().isUnauthorized());
+        session("refresh", logged.path("refreshToken").asText()).andExpect(status().isUnauthorized());
+
+        var renewed = loginBody("editor@example.org", NEXT, "ANDROID", null, null, 200);
+        mvc.perform(post("/api/orders/_probe").header("Authorization", "Bearer " + renewed.path("accessToken").asText()))
+            .andExpect(status().isForbidden());
+        roleChange.put("active", false);
+        mvc.perform(put(endpoint).header("Authorization", admin)
+            .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(roleChange)))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.credentialsVersion").value(3));
+        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + renewed.path("accessToken").asText()))
+            .andExpect(status().isUnauthorized());
+        session("refresh", renewed.path("refreshToken").asText()).andExpect(status().isUnauthorized());
+        loginBody("editor@example.org", NEXT, "ANDROID", null, null, 401);
     }
     @Test void fiveFailedAttemptsLockEvenUnknownLoginAndRecoverAfterWindow() throws Exception {
         for (int n=0;n<5;n++) loginBody("unknown@example.org",PASSWORD,"ANDROID",null,null,401);

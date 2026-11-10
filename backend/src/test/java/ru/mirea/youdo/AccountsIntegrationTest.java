@@ -3,7 +3,6 @@ package ru.mirea.youdo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -19,7 +18,13 @@ import ru.mirea.youdo.domain.*;
 import ru.mirea.youdo.dto.AccountDtos;
 import ru.mirea.youdo.repository.*;
 import ru.mirea.youdo.service.*;
-import ru.mirea.youdo.service.AccountIntegrations.*;
+import ru.mirea.youdo.config.AuthBeans;
+import ru.mirea.youdo.controller.AdminUsersController;
+import ru.mirea.youdo.controller.CategoryController;
+import ru.mirea.youdo.error.ApiExceptionHandler;
+import ru.mirea.youdo.error.ErrorResponses;
+import ru.mirea.youdo.security.CorrelationIdFilter;
+import ru.mirea.youdo.security.SessionRevoker;
 import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -29,12 +34,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(classes=AccountsIntegrationTest.Application.class, properties={
     "spring.datasource.url=jdbc:h2:mem:accounts;DB_CLOSE_DELAY=-1", "spring.jpa.hibernate.ddl-auto=create-drop",
-    "spring.jpa.open-in-view=false", "spring.jpa.show-sql=false"})
+    "spring.jpa.open-in-view=false", "spring.jpa.show-sql=false", "spring.flyway.enabled=false"})
 @AutoConfigureMockMvc
 class AccountsIntegrationTest {
-    @SpringBootConfiguration @EnableAutoConfiguration @EnableMethodSecurity
+    @Configuration @EnableAutoConfiguration @EnableMethodSecurity
     @EntityScan("ru.mirea.youdo.domain") @EnableJpaRepositories("ru.mirea.youdo.repository")
-    @ComponentScan(basePackages={"ru.mirea.youdo.service", "ru.mirea.youdo.controller"})
+    @Import({AuthBeans.class, PasswordPolicy.class, AccountService.class, CategoryService.class,
+        AdminUsersController.class, CategoryController.class, ApiExceptionHandler.class,
+        ErrorResponses.class, CorrelationIdFilter.class})
     static class Application {
         @Bean SecurityFilterChain testSecurity(HttpSecurity http) throws Exception {
             // Real method security + CSRF. JWT/password-change filter is supplied by Denis later.

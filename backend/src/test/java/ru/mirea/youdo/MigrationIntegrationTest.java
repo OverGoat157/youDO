@@ -19,7 +19,7 @@ class MigrationIntegrationTest {
             sql.execute("insert into users(id,name,email,role,rating,registered_at) values (41,'Заказчик','customer@example.org','CUSTOMER',4.50,'2026-01-01'),(75,'Исполнитель','freelancer@example.org','FREELANCER',4.75,'2026-01-02')");
             sql.execute("insert into orders(id,title,category,budget,deadline,customer_id,freelancer_id,created_at) values (99,'Кириллица','DESIGN',12345.67,'2026-12-31',41,75,'2026-02-03 04:05:06'),(100,'Без исполнителя','OTHER',99.99,'2026-01-01',41,null,'2026-01-02 00:00:00')");
             var full=Flyway.configure().dataSource(url,user,password).schemas(schema).defaultSchema(schema).load();
-            assertThat(full.migrate().migrationsExecuted).isEqualTo(2);
+            assertThat(full.migrate().migrationsExecuted).isEqualTo(3);
             assertThat(full.validateWithResult().validationSuccessful).isTrue();
             try (var rows=sql.executeQuery("select o.*,c.code as category_code from orders o join categories c on c.id=o.category_id where o.id=99")) {
                 assertThat(rows.next()).isTrue();

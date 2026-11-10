@@ -3,12 +3,12 @@ package ru.mirea.youdo.service;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.data.domain.*;
 import ru.mirea.youdo.domain.*;
 import ru.mirea.youdo.dto.AccountDtos.*;
 import ru.mirea.youdo.repository.AccountRepository;
-import ru.mirea.youdo.service.AccountIntegrations.*;
+import ru.mirea.youdo.security.SessionRevoker;
 import java.util.*;
 import java.nio.charset.StandardCharsets;
 
@@ -19,9 +19,11 @@ public class AccountService {
     private final PasswordPolicy policy;
     private final SessionRevoker sessions;
     private final AuditWriter audit;
-    private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
-    public AccountService(AccountRepository accounts, PasswordPolicy policy, SessionRevoker sessions, AuditWriter audit) {
+    private final PasswordEncoder encoder;
+    public AccountService(AccountRepository accounts, PasswordPolicy policy, SessionRevoker sessions,
+                          AuditWriter audit, PasswordEncoder encoder) {
         this.accounts = accounts; this.policy = policy; this.sessions = sessions; this.audit = audit;
+        this.encoder = encoder;
     }
     public static String normalizeLogin(String login) {
         if (login == null) throw AccountProblem.invalid("login", "Укажите email для входа");

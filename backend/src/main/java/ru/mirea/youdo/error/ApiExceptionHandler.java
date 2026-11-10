@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +17,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import ru.mirea.youdo.service.AccountProblem;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -28,6 +29,12 @@ public class ApiExceptionHandler {
     }
     @ExceptionHandler(ApiException.class)
     ResponseEntity<ApiError> api(ApiException e, HttpServletRequest r) { return response(r, e.status(), e.code(), e.getMessage()); }
+    @ExceptionHandler(AccountProblem.class)
+    ResponseEntity<ApiError> account(AccountProblem e, HttpServletRequest r) {
+        var fields = e.field() == null ? List.<ApiError.FieldError>of()
+            : List.of(new ApiError.FieldError(e.field(), e.getMessage()));
+        return ResponseEntity.status(e.status()).body(errors.body(r, e.status(), e.code(), e.getMessage(), fields));
+    }
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<ApiError> validation(MethodArgumentNotValidException e, HttpServletRequest r) {
         var fields = e.getBindingResult().getFieldErrors().stream()
@@ -41,7 +48,7 @@ public class ApiExceptionHandler {
     ResponseEntity<ApiError> forbidden(Exception e, HttpServletRequest r) { return response(r, 403, "FORBIDDEN", "Недостаточно прав"); }
     @ExceptionHandler(NoResourceFoundException.class)
     ResponseEntity<ApiError> missing(Exception e, HttpServletRequest r) { return response(r, 404, "NOT_FOUND", "Ресурс не найден"); }
-    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    @ExceptionHandler(OptimisticLockingFailureException.class)
     ResponseEntity<ApiError> version(Exception e, HttpServletRequest r) { return response(r, 409, "VERSION_CONFLICT", "Запись уже изменена"); }
     @ExceptionHandler(DataIntegrityViolationException.class)
     ResponseEntity<ApiError> integrity(Exception e, HttpServletRequest r) { return response(r, 409, "DATA_CONFLICT", "Изменение нарушает уникальность или связи данных"); }

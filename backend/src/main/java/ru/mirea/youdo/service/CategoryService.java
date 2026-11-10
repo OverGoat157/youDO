@@ -6,7 +6,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import ru.mirea.youdo.domain.Category;
 import ru.mirea.youdo.dto.CategoryDtos.*;
 import ru.mirea.youdo.repository.CategoryRepository;
-import ru.mirea.youdo.service.AccountIntegrations.AuditWriter;
 import java.util.*;
 
 @Service @Transactional(readOnly = true)

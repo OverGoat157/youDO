@@ -4,11 +4,11 @@
 
 ## Аккаунты — Юра
 
-`security.AccountCredentialsStore` предоставляет findByLogin(normalizedLogin), findById(UUID), lock(UUID), changePassword(UUID, encodedPassword), bootstrap(login, name, encodedPassword). Сейчас их выполняет `JdbcAccountCredentialsStore` на таблицах V3, без JPA-модели аккаунта и без контроллера администрирования. При подключении AccountService замените этот адаптер; одновременно должен существовать один bean AccountCredentialsStore. Отдавайте внутренний AccountCredentials со всеми полями; хеш не должен попадать в REST DTO. Логин хранится trim + lowercase(Locale.ROOT), уникальный email до 150 символов.
+`security.AccountCredentialsStore` предоставляет findByLogin(normalizedLogin), findById(UUID), lock(UUID), changePassword(UUID, encodedPassword), bootstrap(login, name, encodedPassword). Их выполняет `JdbcAccountCredentialsStore` на тех же таблицах, которыми управляет `AccountService`. JDBC и JPA используют общую транзакцию и блокировку строки аккаунта. Отдавайте внутренний AccountCredentials со всеми полями; хеш не должен попадать в REST DTO. Логин хранится trim + lowercase(Locale.ROOT), уникальный email до 150 символов.
 
 Модель будущего UserAccount: UUID id, name до 100, login до 150, passwordHash до 100, active, mustChangePassword, credentialsVersion, необязательный participantId BIGINT, createdAt/updatedAt UTC. Роли в account_roles: account_id/role, строки VIEWER/EDITOR/ADMIN. AccountCredentials.roles — назначенные роли; наследование прав выполняет security.
 
-NewPasswordPolicy.validate(rawPassword) — порт политики; Юрина PasswordPolicy реализует его. Полноценная базовая политика действует до замены. BCrypt PasswordEncoder — общий bean cost=12; не заводите второй encoder с несовместимым форматом.
+Авторизация и администрирование используют общую `PasswordPolicy`. BCrypt PasswordEncoder — общий bean cost=12; не заводите второй encoder с несовместимым форматом.
 
 Все изменения ролей, сбросы пароля и отключения:
 
@@ -26,11 +26,11 @@ changePassword в адаптере повышает credentialsVersion и сни
 
 ## Заказы — Карим
 
-Таблицы V1/V2/V3 определяют имена полей и ограничения. Order: внутренний BIGINT id, публичный UUID public_id. order_tags.order_id и order_notes.order_id — BIGINT FK, REST принимает UUID заказа. Account, category, note, audit — UUID. Категория в categories, прежнего orders.category после V2 нет. created_at/updated_at — timestamptz (Instant), version — BIGINT для @Version. Participants отображаются на прежнюю users; аккаунты входа отдельно.
+Миграции V1–V4 определяют имена полей и ограничения. Order: внутренний BIGINT id, публичный UUID public_id. order_tags.order_id и order_notes.order_id — BIGINT FK, REST принимает UUID заказа. Account, category, note, audit — UUID. Категория в categories, прежнего orders.category после V2 нет. created_at/updated_at — timestamptz (Instant), version — BIGINT для @Version. Participants отображаются на прежнюю users; аккаунты входа отдельно.
 
 `CurrentUser.require()`/`optional()` — доступ к principal. `AuditWriter.record(action,entityType,publicId,summary)` должен вызываться внутри транзакции сервиса после бизнес-проверок. Заказ и его аудит откатываются вместе. Для заметок author_id берётся из CurrentUser.id(), не из входного DTO. Признак PERMANENT_DELETE_ENABLED проверяется уже на HTTP-границе, но сервис также должен проверять права, архивное состояние и версию при внутренних вызовах из CSV/других сервисов.
 
-Изменения схемы добавляет Денис следующей Flyway-версией. V1–V3 после совместного принятия не редактировать. Если модель требует других столбцов, согласуйте миграцию до подключения entity с ddl-auto=validate.
+Изменения схемы добавляет Денис следующей Flyway-версией. Применённые миграции сохраняются. Если модель требует других столбцов, согласуйте миграцию до подключения entity с ddl-auto=validate.
 
 ## CSV, аналитика и аудит — Сергей
 

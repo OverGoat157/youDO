@@ -10,7 +10,7 @@ public class UserAccount {
     @Id private UUID id;
     @Column(nullable = false, length = 100) private String name;
     @Column(nullable = false, length = 150) private String login;
-    @JsonIgnore @Column(name = "password_hash", nullable = false, length = 60) private String passwordHash;
+    @JsonIgnore @Column(name = "password_hash", nullable = false, length = 100) private String passwordHash;
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "account_roles", joinColumns = @JoinColumn(name = "account_id"),
         uniqueConstraints = @UniqueConstraint(name = "uk_account_role", columnNames = {"account_id", "role"}))
