@@ -32,7 +32,7 @@ public class CsvController {
 
     @PostMapping(path = "/import/preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ImportPreview preview(@RequestParam(value = "file", required = false) MultipartFile file,
-                                 @RequestParam(defaultValue = "CREATE_ONLY") ImportMode mode) {
+                                 @RequestParam(defaultValue = "NEW_ONLY") ImportMode mode) {
         return csv.preview(file, mode);
     }
 

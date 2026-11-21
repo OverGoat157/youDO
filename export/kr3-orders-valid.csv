@@ -1,0 +1,3 @@
+﻿code;title;description;categoryCode;status;budget;deadline;customerEmail;freelancerEmail;urgent;tags
+KR3-DEMO-WEB;Сайт для кофейни;"Меню; контакты и карта";DEVELOPMENT;OPEN;45000.00;2030-12-31;anna@mail.ru;;false;java|веб
+KR3-DEMO-BOT;Бот записи клиентов;Запись и напоминания;DEVELOPMENT;IN_PROGRESS;60000.00;2030-12-31;anna@mail.ru;dmitry@mail.ru;true;бот|java

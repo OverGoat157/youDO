@@ -26,10 +26,11 @@ public class OrderService {
     private final Clock clock;
     private final OrderPriorityCalculator priority;
     private final YoudoProperties properties;
+    private final jakarta.validation.Validator validator;
     public OrderService(OrderRepository orders,ParticipantRepository participants,OrderNoteRepository notes,
-            CategoryService categories,AuditWriter audit,Clock clock,OrderPriorityCalculator priority,YoudoProperties properties) {
+            CategoryService categories,AuditWriter audit,Clock clock,OrderPriorityCalculator priority,YoudoProperties properties,jakarta.validation.Validator validator) {
         this.orders=orders; this.participants=participants; this.notes=notes; this.categories=categories;
-        this.audit=audit; this.clock=clock; this.priority=priority; this.properties=properties;
+        this.audit=audit; this.clock=clock; this.priority=priority; this.properties=properties; this.validator=validator;
     }
     @PreAuthorize("hasAnyRole('VIEWER','EDITOR','ADMIN')")
     public PageResponse<Response> list(OrderFilter filter,int page,int size,String sort) {
@@ -138,6 +139,11 @@ public class OrderService {
         LocalDate deadline,OrderStatus status,Participant customer,Participant freelancer,boolean urgent,Set<String> tags) {}
     private Validated validate(Write i,Order old) {
         if(i==null) throw AccountProblem.invalid("order","Укажите заказ");
+        var violations=validator.validate(i,old==null?OnCreate.class:OnUpdate.class);
+        if(!violations.isEmpty()) {
+            var v=violations.stream().sorted(java.util.Comparator.comparing(x->x.getPropertyPath().toString())).findFirst().orElseThrow();
+            throw AccountProblem.invalid(v.getPropertyPath().toString(),v.getMessage());
+        }
         if(old!=null) { checkVersion(old,i.version()); requireUnarchived(old); }
         else if(i.version()!=null) throw AccountProblem.invalid("version","Версия назначается сервером");
         String code=required(i.code(),50,"code"),title=required(i.title(),150,"title");

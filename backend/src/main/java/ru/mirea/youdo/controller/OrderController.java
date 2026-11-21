@@ -2,6 +2,7 @@ package ru.mirea.youdo.controller;
 import java.net.URI;
 import java.util.*;
 import jakarta.validation.Valid;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.mirea.youdo.dto.OrderDtos.*;
@@ -17,10 +18,10 @@ public class OrderController {
         @RequestParam(defaultValue="0") int page,@RequestParam(defaultValue="20") int size,
         @RequestParam(defaultValue="createdAt,desc") String sort) { return orders.list(OrderFilter.from(filter),page,size,sort); }
     @GetMapping("/{id}") public Response get(@PathVariable UUID id) { return orders.get(id); }
-    @PostMapping public ResponseEntity<Response> create(@RequestBody Write input) {
+    @PostMapping public ResponseEntity<Response> create(@Validated(OnCreate.class) @RequestBody Write input) {
         Response result=orders.create(input);return ResponseEntity.created(URI.create("/api/orders/"+result.id())).body(result);
     }
-    @PutMapping("/{id}") public Response update(@PathVariable UUID id,@RequestBody Write input) { return orders.update(id,input); }
+    @PutMapping("/{id}") public Response update(@PathVariable UUID id,@Validated(OnUpdate.class) @RequestBody Write input) { return orders.update(id,input); }
     @DeleteMapping("/{id}") public ResponseEntity<Void> archive(@PathVariable UUID id,@RequestParam Long version) {
         orders.archive(id,version);return ResponseEntity.noContent().build();
     }

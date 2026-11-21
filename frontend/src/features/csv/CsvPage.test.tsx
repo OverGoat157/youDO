@@ -49,18 +49,18 @@ describe('CsvPage', () => {
     expect(body.get('mode')).toBe('UPSERT_BY_CODE');
     expect((body.get('file') as File).name).toBe('orders.csv');
     expect(within(screen.getByRole('table', { name: 'Ошибки в строках файла' })).getByText('Категория не найдена: NOPE')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Применить (2)' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Применить (2)' })).toBeDisabled();
   });
 
   it('применяет проверенный снимок по previewId и показывает итог', async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse(preview)).mockResolvedValueOnce(jsonResponse({ created: 1, updated: 1, skipped: 1 }));
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ...preview, invalidRows: 0, issues: [] })).mockResolvedValueOnce(jsonResponse({ created: 1, updated: 1, skipped: 0 }));
     const user = userEvent.setup();
     render(<CsvPage user={editor} />);
     await checkFile(user);
 
     await user.click(await screen.findByRole('button', { name: 'Применить (2)' }));
 
-    expect(await screen.findByText(/создано 1, обновлено 1, пропущено строк с ошибками 1/)).toBeInTheDocument();
+    expect(await screen.findByText(/создано 1, обновлено 1/)).toBeInTheDocument();
     const [url, init] = fetchMock.mock.calls[1];
     expect(url).toBe('/api/orders/import/apply');
     expect(JSON.parse(init.body as string)).toEqual({ previewId: 'p-1' });
@@ -68,7 +68,7 @@ describe('CsvPage', () => {
   });
 
   it('после конфликта версии убирает проверку и показывает ошибку сервера', async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse(preview)).mockResolvedValueOnce(jsonResponse({
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ...preview, invalidRows: 0, issues: [] })).mockResolvedValueOnce(jsonResponse({
       status: 409, code: 'VERSION_CONFLICT', message: 'Строка 3: Заказ уже изменён',
       fieldErrors: [], correlationId: 'c-9', timestamp: '2026-11-22T10:00:00Z',
     }, 409));
@@ -89,6 +89,21 @@ describe('CsvPage', () => {
     await checkFile(user);
 
     expect(await screen.findByRole('button', { name: 'Применить (0)' })).toBeDisabled();
+  });
+
+  it('сохраняет preview после временного сбоя и позволяет повтор', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ ...preview, invalidRows: 0, issues: [] }))
+      .mockResolvedValueOnce(jsonResponse({ status: 500, message: 'Временный сбой' }, 500))
+      .mockResolvedValueOnce(jsonResponse({ created: 1, updated: 1, skipped: 0 }));
+    const user = userEvent.setup();
+    render(<CsvPage user={editor} />);
+    await checkFile(user);
+    await user.click(await screen.findByRole('button', { name: 'Применить (2)' }));
+    expect(await screen.findByText('Временный сбой')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Применить (2)' })).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: 'Применить (2)' }));
+    expect(await screen.findByText(/создано 1, обновлено 1/)).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it('наблюдателю показывает только экспорт и скачивает выбранную выборку', async () => {

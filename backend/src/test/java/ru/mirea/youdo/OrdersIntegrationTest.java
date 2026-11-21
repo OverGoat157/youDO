@@ -243,4 +243,28 @@ class OrdersIntegrationTest {
             assertThat(count("audit_events")).isEqualTo(2);assertThat(jdbc.queryForObject("select version from orders",Long.class)).isEqualTo(1);
         } finally { pool.shutdownNow(); }
     }
+
+    @Test void beanValidationRejectsMissingFieldsAndRequiresUpdateVersion() throws Exception {
+        var bad=send(post("/api/orders"),editor,Map.of(),400);
+        assertThat(bad.get("code").asText()).isEqualTo("VALIDATION_ERROR");
+        assertThat(bad.get("fieldErrors").toString()).contains("code","title","categoryId","budget","deadline","customerId");
+        var o=create("BEAN");
+        var missing=input("BEAN");send(put("/api/orders/"+o.id()),editor,missing,400);
+        var createVersion=input("FORGED");createVersion.put("version",0);
+        send(post("/api/orders"),editor,createVersion,400);
+        assertThat(count("orders")).isEqualTo(1);
+    }
+
+    @Test void swaggerAssetsAndSchemaRequireAdmin() throws Exception {
+        SecurityContextHolder.clearContext();
+        mvc.perform(get("/v3/api-docs")).andExpect(status().isUnauthorized());
+        for(String token:List.of(viewer,editor)) {
+            send(get("/v3/api-docs"),token,null,403);
+            send(get("/swagger-ui/swagger-ui-bundle.js"),token,null,403);
+        }
+        var spec=send(get("/v3/api-docs"),admin,null,200);
+        assertThat(spec.at("/info/title").asText()).isEqualTo("youDO REST API");
+        mvc.perform(get("/swagger-ui/swagger-ui-bundle.js").header("Authorization","Bearer "+admin))
+            .andExpect(status().isOk());
+    }
 }

@@ -55,7 +55,7 @@ class AuthIntegrationTest {
     }
     @BeforeEach void reset() {
         // Dedicated auth_tests schema in the test database; never the application's public schema.
-        jdbc.execute("TRUNCATE refresh_sessions,account_roles,order_notes,user_accounts,audit_events,auth_login_attempts");
+        jdbc.execute("TRUNCATE csv_import_previews,refresh_sessions,account_roles,order_notes,user_accounts,audit_events,auth_login_attempts");
     }
     UUID account(String role, boolean temporary) {
         UUID id=UUID.randomUUID();
@@ -80,7 +80,7 @@ class AuthIntegrationTest {
             .content(json.writeValueAsString(Map.of("clientType","ANDROID","refreshToken",token))));
     }
     @Test void contextAndFlywayUsePostgres() {
-        assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history where success and version is not null",Integer.class)).isEqualTo(4);
+        assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history where success and version is not null",Integer.class)).isEqualTo(5);
         assertThat(jdbc.queryForObject("select count(*) from categories",Integer.class)).isEqualTo(5);
     }
     @Test void browserRoutesLoadWithoutBearerWhileAdminApiStaysProtected() throws Exception {

@@ -10,8 +10,11 @@ import java.nio.charset.StandardCharsets;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.time.format.ResolverStyle;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import org.apache.commons.csv.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -31,28 +34,28 @@ import ru.mirea.youdo.security.CurrentUser;
  */
 @Service
 public class CsvOrderService {
-    static final String[] HEADERS = {"code", "title", "description", "category", "status", "budget",
+    static final String[] HEADERS = {"code", "title", "description", "categoryCode", "status", "budget",
         "deadline", "customerEmail", "freelancerEmail", "urgent", "tags"};
-    static final int MAX_ROWS = 1000;
+    static final int MAX_ROWS = 10000;
     static final Duration PREVIEW_TTL = Duration.ofMinutes(15);
-    private static final DateTimeFormatter RU_DATE = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+    private static final DateTimeFormatter RU_DATE = DateTimeFormatter.ofPattern("dd.MM.uuuu").withResolverStyle(ResolverStyle.STRICT);
 
     private final OrderService orders;
     private final CategoryRepository categories;
     private final ParticipantRepository participants;
     private final AuditWriter audit;
     private final Clock clock;
-    /** Проверенные файлы ждут apply в памяти: id → снимок. У пользователя хранится только последний. */
-    private final Map<UUID, Snapshot> previews = new ConcurrentHashMap<>();
+    private final CsvImportPreviewRepository previews;
+    private final CsvPreviewStore previewStore;
+    private final ObjectMapper json;
 
     public CsvOrderService(OrderService orders, CategoryRepository categories, ParticipantRepository participants,
-                           AuditWriter audit, Clock clock) {
+                           AuditWriter audit, Clock clock, CsvImportPreviewRepository previews, CsvPreviewStore previewStore, ObjectMapper json) {
         this.orders = orders; this.categories = categories; this.participants = participants;
-        this.audit = audit; this.clock = clock;
+        this.audit = audit; this.clock = clock; this.previews=previews; this.previewStore=previewStore; this.json=json;
     }
 
-    private record Planned(long line, String code, boolean update, Write input) {}
-    private record Snapshot(UUID owner, ImportMode mode, Instant expiresAt, int skipped, List<Planned> rows) {}
+    public record Planned(long line, String code, boolean update, Write input) {}
 
     // ---------- экспорт ----------
 
@@ -94,7 +97,7 @@ public class CsvOrderService {
     @PreAuthorize("hasAnyRole('EDITOR','ADMIN')")
     public ImportPreview preview(MultipartFile file, ImportMode mode) {
         CurrentUser user = OrderService.requireEditor();
-        if (mode == null) mode = ImportMode.CREATE_ONLY;
+        if (mode == null || mode == ImportMode.CREATE_ONLY) mode = ImportMode.NEW_ONLY;
         List<RowIssue> issues = new ArrayList<>();
         List<Planned> planned = new ArrayList<>();
         Set<String> codesInFile = new HashSet<>();
@@ -120,7 +123,7 @@ public class CsvOrderService {
                         continue;
                     }
                     Optional<Response> existing = code == null ? Optional.empty() : orders.findByCode(code);
-                    if (existing.isPresent() && mode == ImportMode.CREATE_ONLY) {
+                    if (existing.isPresent() && mode == ImportMode.NEW_ONLY) {
                         issues.add(new RowIssue(line, "code", "Заказ с таким кодом уже есть"));
                     } else if (existing.isPresent()) {
                         // Запоминаем версию на момент проверки: если заказ изменят до apply, будет 409, а не тихая перезапись.
@@ -143,9 +146,10 @@ public class CsvOrderService {
         if (total == 0) throw AccountProblem.invalid("file", "В файле нет строк с заказами");
 
         Instant now = clock.instant();
-        UUID id = UUID.randomUUID();
-        previews.values().removeIf(s -> s.owner().equals(user.id()) || s.expiresAt().isBefore(now));
-        previews.put(id, new Snapshot(user.id(), mode, now.plus(PREVIEW_TTL), issues.size(), List.copyOf(planned)));
+        UUID id;
+        try {
+            id=previewStore.save(user.id(),mode.name(),now,now.plus(PREVIEW_TTL),issues.size(),json.writeValueAsString(planned));
+        } catch(JsonProcessingException e) { throw new IllegalStateException("Не удалось сохранить проверку CSV",e); }
         int toUpdate = (int) planned.stream().filter(Planned::update).count();
         return new ImportPreview(id, mode, total, planned.size(), issues.size(), planned.size() - toUpdate, toUpdate,
             List.copyOf(issues), now.plus(PREVIEW_TTL));
@@ -156,6 +160,7 @@ public class CsvOrderService {
      * корректным UTF-8, читаем как windows-1251, а не превращаем кириллицу в «����».
      */
     private static String readText(MultipartFile file) {
+        if (file != null && file.getSize() > 5L * 1024 * 1024) throw new ApiException(413,"FILE_TOO_LARGE","CSV не больше 5 MiB");
         if (file == null || file.isEmpty()) throw AccountProblem.invalid("file", "Выберите непустой CSV-файл");
         byte[] bytes;
         try { bytes = file.getBytes(); }
@@ -177,20 +182,20 @@ public class CsvOrderService {
         String header = end < 0 ? text : text.substring(0, end);
         char delimiter = header.contains(";") ? ';' : ',';
         return CSVFormat.DEFAULT.builder().setDelimiter(delimiter).setHeader().setSkipHeaderRecord(true)
-            .setIgnoreEmptyLines(true).setTrim(true).get();
+            .setIgnoreEmptyLines(true).setTrim(true).setDuplicateHeaderMode(DuplicateHeaderMode.DISALLOW).get();
     }
 
     private static void checkHeaders(Map<String, Integer> actual) {
         for (String header : HEADERS) {
-            if (!actual.containsKey(header)) throw AccountProblem.invalid("file", "В заголовке нет колонки " + header);
+            if (!actual.containsKey(header) && !(header.equals("categoryCode") && actual.containsKey("category"))) throw AccountProblem.invalid("file", "В заголовке нет колонки " + header);
         }
     }
 
     /** Строка CSV → тот же Write, что присылает форма. Длины, бюджет, статус и даты дальше проверяет OrderService. */
     private Write toWrite(CSVRecord r) {
-        String categoryCode = text(r, "category");
+        String categoryCode = text(r, r.isMapped("categoryCode") ? "categoryCode" : "category");
         UUID categoryId = categoryCode == null ? null : categories.findByCode(categoryCode.toUpperCase(Locale.ROOT))
-            .orElseThrow(() -> AccountProblem.invalid("category", "Категория не найдена: " + categoryCode)).getId();
+            .orElseThrow(() -> AccountProblem.invalid("categoryCode", "Категория не найдена: " + categoryCode)).getId();
         String budget = text(r, "budget");
         return new Write(text(r, "code"), text(r, "title"), text(r, "description"), categoryId, status(text(r, "status")),
             budget == null ? null : budget.replace(" ", "").replace(" ", "").replace(',', '.'),
@@ -246,23 +251,24 @@ public class CsvOrderService {
     // ---------- применение (apply) ----------
 
     /**
-     * Применяет корректные строки проверенного снимка одной транзакцией.
+     * Применяет весь проверенный файл без ошибок одной транзакцией.
      * Ошибка любой строки (например, 409 — заказ изменили после проверки) откатывает весь файл вместе с аудитом.
      */
     @Transactional
     @PreAuthorize("hasAnyRole('EDITOR','ADMIN')")
     public ImportResult apply(UUID previewId) {
         CurrentUser user = OrderService.requireEditor();
-        Snapshot snapshot = previews.get(previewId);
-        // remove(id, snapshot) атомарен: два одновременных apply одного снимка не пройдут оба.
-        if (snapshot == null || !snapshot.owner().equals(user.id()) || snapshot.expiresAt().isBefore(clock.instant())
-                || !previews.remove(previewId, snapshot)) {
-            throw new ApiException(404, "PREVIEW_NOT_FOUND", "Проверка устарела или уже применена. Проверьте файл ещё раз");
-        }
-        if (snapshot.rows().isEmpty()) throw AccountProblem.invalid("previewId", "В файле нет корректных строк");
+        CsvImportPreview snapshot = previews.lockById(previewId).orElseThrow(CsvOrderService::missingPreview);
+        if (!snapshot.getOwnerId().equals(user.id()) || snapshot.getUsedAt()!=null
+                || !snapshot.getExpiresAt().isAfter(clock.instant())) throw missingPreview();
+        if(snapshot.getInvalidRows()>0) throw AccountProblem.invalid("previewId","Исправьте все ошибки CSV и проверьте файл заново");
+        List<Planned> rows;
+        try { rows=json.readValue(snapshot.getRowsJson(),new TypeReference<List<Planned>>() {}); }
+        catch(JsonProcessingException e) { throw new IllegalStateException("Не удалось прочитать проверку CSV",e); }
+        if(rows.isEmpty()) throw AccountProblem.invalid("previewId","В файле нет корректных строк");
 
         int created = 0, updated = 0;
-        for (Planned row : snapshot.rows()) {
+        for (Planned row : rows) {
             try {
                 if (row.update()) { orders.updateByCode(row.code(), row.input()); updated++; }
                 else { orders.create(row.input()); created++; }
@@ -272,9 +278,14 @@ public class CsvOrderService {
                 throw new ApiException(e.status(), e.code(), "Строка " + row.line() + ": " + e.getMessage());
             }
         }
-        String mode = snapshot.mode() == ImportMode.CREATE_ONLY ? "только новые" : "обновление по коду";
+        String mode = snapshot.getMode().equals(ImportMode.NEW_ONLY.name()) ? "только новые" : "обновление по коду";
+        snapshot.markUsed(clock.instant());
+        previews.flush();
         audit.record("ORDER_CSV_IMPORTED", "ORDER", null, "Импорт CSV (" + mode + "): создано " + created
-            + ", обновлено " + updated + ", пропущено " + snapshot.skipped());
-        return new ImportResult(created, updated, snapshot.skipped());
+            + ", обновлено " + updated);
+        return new ImportResult(created, updated, 0);
+    }
+    private static ApiException missingPreview() {
+        return new ApiException(404,"PREVIEW_NOT_FOUND","Проверка устарела или уже применена. Проверьте файл ещё раз");
     }
 }

@@ -7,8 +7,15 @@ import ru.mirea.youdo.domain.*;
 public final class OrderDtos {
     private OrderDtos() {}
     /** Shared input for web/CSV. version is absent on create and mandatory on update. */
-    public record Write(String code, String title, String description, UUID categoryId, OrderStatus status,
-        String budget, LocalDate deadline, Long customerId, Long freelancerId, Boolean urgent, List<String> tags, Long version) {}
+    public interface OnCreate extends jakarta.validation.groups.Default {}
+    public interface OnUpdate extends jakarta.validation.groups.Default {}
+    public record Write(@NotBlank @Size(max=50) String code, @NotBlank @Size(max=150) String title,
+        @Size(max=5000) String description, @NotNull UUID categoryId,
+        @NotNull(groups=OnUpdate.class) OrderStatus status,
+        @NotBlank @Size(max=100) String budget, @NotNull LocalDate deadline,
+        @NotNull @Positive Long customerId, @Positive Long freelancerId, Boolean urgent,
+        @Size(max=20) List<@NotBlank @Size(max=50) String> tags,
+        @Null(groups=OnCreate.class) @NotNull(groups=OnUpdate.class) @PositiveOrZero Long version) {}
     public record Response(UUID id, String code, String title, String description, UUID categoryId, String categoryName,
         OrderStatus status, String budget, LocalDate deadline, Long customerId, String customerName,
         Long freelancerId, String freelancerName, boolean urgent, List<String> tags, OrderPriority priority,
