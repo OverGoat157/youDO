@@ -1,7 +1,7 @@
 import { apiDownload, apiFetch, jsonRequest } from '../../api/client';
 import type { ArchivedFilter } from '../orders/types';
 
-export type ImportMode = 'CREATE_ONLY' | 'UPSERT_BY_CODE';
+export type ImportMode = 'NEW_ONLY' | 'UPSERT_BY_CODE';
 
 export interface RowIssue {
   line: number;
@@ -28,7 +28,7 @@ export interface ImportResult {
 }
 
 export const MODE_LABELS: Record<ImportMode, string> = {
-  CREATE_ONLY: 'Только новые',
+  NEW_ONLY: 'Только новые',
   UPSERT_BY_CODE: 'Новые и обновление по коду',
 };
 
@@ -37,7 +37,7 @@ export const CSV_COLUMNS: Array<{ name: string; hint: string }> = [
   { name: 'code', hint: 'внешний код заказа, уникальный; по нему идёт обновление' },
   { name: 'title', hint: 'название, до 150 символов' },
   { name: 'description', hint: 'описание, можно пустым' },
-  { name: 'category', hint: 'код категории, например DEVELOPMENT' },
+  { name: 'categoryCode', hint: 'код категории, например DEVELOPMENT' },
   { name: 'status', hint: 'OPEN, IN_PROGRESS, ON_REVIEW, COMPLETED или CANCELLED' },
   { name: 'budget', hint: 'бюджет, например 15000.00 или 15 000,00' },
   { name: 'deadline', hint: 'дедлайн ГГГГ-ММ-ДД или ДД.ММ.ГГГГ' },

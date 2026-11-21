@@ -1,6 +1,70 @@
 # youDO — биржа фриланса
 
-КР №3: Spring Boot + React — [запуск backend/web](backend/README.md), [заказы, priority и контракт для CSV](docs/kr3-orders-api.md). Инструкции JavaFX КР №2 приведены ниже.
+## КР №3 — Spring Boot, React и PostgreSQL
+
+Полное web-приложение биржи: заказы, участники, категории, версии и архив,
+заметки и массовые операции, CSV preview/apply/export, аналитика, аккаунты и аудит.
+React раздаётся сервером на том же origin. JavaFX КР №2 сохранён ниже как отдельный клиент.
+
+Нужны Docker Compose и Python 3. В контейнерах используются Java 21, Maven 3.9 и PostgreSQL 16;
+для локальной сборки frontend — Node.js 22. Из корня репозитория:
+
+```sh
+python3 backend/scripts/setup_env.py  # только первый запуск; существующий .env не меняется
+docker compose --env-file backend/.env -f backend/docker-compose.yml up -d --build --wait
+docker compose --env-file backend/.env -f backend/docker-compose.yml ps
+```
+
+Открыть `http://localhost:8080/`, health — `/actuator/health`. Первый вход:
+`admin@youdo.local`, временный пароль из локального `backend/.env`; сервер потребует
+сменить его. После смены используйте новый пароль: повторный запуск не сбрасывает аккаунт.
+Секреты, дампы и `.env` в Git не добавляются; шаблон — `backend/.env.example`.
+При другом HTTP_PORT укажите соответствующий ALLOWED_ORIGINS.
+
+VIEWER читает и экспортирует; EDITOR также изменяет заказы/заметки и импортирует CSV;
+ADMIN управляет аккаунтами/категориями, читает аудит и документацию API.
+Swagger открывается кнопкой **API** после входа администратора: схема и ресурсы
+загружаются с его Bearer, доступ остальным закрыт. Прямые `/swagger-ui.html` и
+`/v3/api-docs` также доступны ADMIN с заголовком Authorization.
+
+Flyway создаёт схему, Hibernate использует `validate`. Backend хранит данные в
+отдельном volume `youdo-kr3_backend_data`; прежняя база JavaFX не меняется.
+Участники биржи из `users` и аккаунты входа — разные сущности.
+[Перенос данных КР №1–2](backend/migration.md). Для новой отдельной демонстрационной
+базы можно добавить двух участников из `backend/scripts/demo_participants.sql`.
+Старые `sql/schema.sql`/`sql/seed.sql` поверх серверной БД не запускаются.
+
+CSV: UTF-8 с BOM, `;`, колонка `categoryCode`, участники по email, теги через `|`.
+NEW_ONLY и UPSERT_BY_CODE, до 5 MiB/10 000 строк. Сначала исправляются **все** ошибки
+preview; применение файла и отметка использования выполняются одной транзакцией.
+Исходные версии защищают от перезаписи параллельных изменений. Примеры:
+[корректный CSV](export/kr3-orders-valid.csv), [CSV с ошибками](export/kr3-orders-invalid.csv).
+Старые `CREATE_ONLY`/`category` принимаются как совместимые варианты.
+
+Проверки в отдельной тестовой PostgreSQL без доступа к рабочему volume:
+
+```sh
+mkdir -p /tmp/youdo-kr3-maven
+docker compose -f backend/compose.verify.yml run --rm verify
+docker compose -f backend/compose.verify.yml down
+npm --prefix frontend ci
+npm --prefix frontend test
+npm --prefix frontend run build
+```
+
+Остановка сохраняет данные:
+
+```sh
+docker compose --env-file backend/.env -f backend/docker-compose.yml down
+```
+
+- [Подробный запуск, авторизация и конфигурация](backend/README.md)
+- [REST, CSV и договор модулей](backend/contracts.md)
+- [Заказы и общий расчёт priority](docs/kr3-orders-api.md)
+- [Сценарий защиты](docs/kr3-demo.md)
+- [Протокол итоговой проверки](docs/kr3-verification.md)
+
+## КР №2 — JavaFX
 
 Настольное приложение JavaFX для КР №2 по дисциплине «Программирование корпоративных систем», продолжение проекта КР №1. Пользователи и заказы хранятся в PostgreSQL; приложение подключается к своей базе напрямую через JDBC.
 

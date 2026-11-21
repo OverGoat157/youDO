@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class WebPageController {
     @GetMapping({"/login", "/change-password", "/admin/users", "/categories",
         "/orders", "/orders/new", "/orders/{id}", "/orders/{id}/edit",
-        "/csv", "/analytics", "/audit"})
+        "/csv", "/analytics", "/audit", "/docs"})
     public String page() {
         return "forward:/index.html";
     }

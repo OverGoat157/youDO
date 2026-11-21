@@ -13,6 +13,7 @@ import { CategoriesPage } from '../features/categories/CategoriesPage';
 import { AuditPage } from '../features/audit/AuditPage';
 import { CsvPage } from '../features/csv/CsvPage';
 import { AnalyticsPage } from '../features/analytics/AnalyticsPage';
+import { DocsPage } from '../features/docs/DocsPage';
 import './app.css';
 
 interface NavItem {
@@ -33,6 +34,7 @@ const NAV: NavItem[] = [
   { path: '/analytics', label: 'Аналитика' },
   { path: '/audit', label: 'Аудит', adminOnly: true },
   { path: '/admin/users', label: 'Пользователи', adminOnly: true },
+  { path: '/docs', label: 'API', adminOnly: true },
 ];
 
 export function App() {
@@ -117,6 +119,8 @@ function resolveRoute(location: string, state: ReturnType<typeof useSession>) {
   if (matchPath('/admin/users', path)) {
     return isAdmin(user) ? <UsersPage apiFetch={apiFetch} currentUser={user} /> : <Redirect to="/orders" />;
   }
+
+  if (matchPath('/docs', path)) return isAdmin(user) ? <DocsPage /> : <Redirect to="/orders" />;
 
   if (matchPath('/csv', path)) return <CsvPage user={user} />;
 

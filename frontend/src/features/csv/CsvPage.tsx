@@ -29,7 +29,7 @@ export function CsvPage({ user }: { user: Account }) {
   const editable = canEdit(user);
   const [file, setFile] = useState<File | null>(null);
   const [fileKey, setFileKey] = useState(0);
-  const [mode, setMode] = useState<ImportMode>('CREATE_ONLY');
+  const [mode, setMode] = useState<ImportMode>('NEW_ONLY');
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
   const [scope, setScope] = useState<ArchivedFilter>('false');
@@ -59,18 +59,20 @@ export function CsvPage({ user }: { user: Account }) {
   }
 
   async function apply() {
-    if (!preview) return;
+    if (!preview || preview.invalidRows > 0) return;
     setBusy('apply');
     setError(null);
     try {
       setResult(await applyImport(preview.previewId));
+      setPreview(null);
       setFile(null);
       setFileKey(value => value + 1);
     } catch (cause) {
-      setError(cause as ApiRequestError);
+      const failure=cause as ApiRequestError;
+      setError(failure);
+      if(failure.status===404 || failure.status===409) setPreview(null);
     } finally {
-      // Сервер одноразово забирает проверку при любом исходе: после ошибки файл нужно проверить заново.
-      setPreview(null);
+      // Успешный apply одноразовый; конфликт требует нового снимка, временный сбой допускает повтор.
       setBusy(null);
     }
   }
@@ -101,7 +103,7 @@ export function CsvPage({ user }: { user: Account }) {
       {result && (
         <div className="alert alert--success" role="status">
           <p>
-            Импорт выполнен: создано {result.created}, обновлено {result.updated}, пропущено строк с ошибками {result.skipped}.
+            Импорт выполнен: создано {result.created}, обновлено {result.updated}.
           </p>
           <p><a {...linkProps('/orders')}>Перейти к заказам</a></p>
         </div>
@@ -129,7 +131,7 @@ export function CsvPage({ user }: { user: Account }) {
                 ))}
               </fieldset>
               <p className="muted small">
-                «Только новые» пропускает строки с уже существующим кодом. Во втором режиме такие строки обновляют заказ.
+                «Только новые» отклоняет существующий код. Во втором режиме такой заказ обновляется. До 10 000 строк и 5 MiB; перед применением исправьте все ошибки.
               </p>
               <div className="actions">
                 <button type="submit" disabled={!file || busy !== null}>
@@ -191,11 +193,11 @@ export function CsvPage({ user }: { user: Account }) {
           )}
 
           <p className="muted small">
-            Режим: {MODE_LABELS[preview.mode]}. Строки с ошибками будут пропущены.
+            Режим: {MODE_LABELS[preview.mode]}. Импорт применяется целиком, без пропуска ошибочных строк.
             Если заказ изменят после проверки, импорт целиком отменится. Проверка действует до {formatDateTime(preview.expiresAt)}.
           </p>
           <div className="actions">
-            <button type="button" disabled={preview.validRows === 0 || busy !== null} onClick={() => void apply()}>
+            <button type="button" disabled={preview.invalidRows > 0 || preview.validRows === 0 || busy !== null} onClick={() => void apply()}>
               {busy === 'apply' ? 'Применяем…' : `Применить (${preview.validRows})`}
             </button>
             <button type="button" className="button--secondary" disabled={busy !== null} onClick={resetCheck}>Отмена</button>

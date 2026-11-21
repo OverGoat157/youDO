@@ -40,12 +40,31 @@ AuditEvent — таблица audit_events: UUID id, actorId nullable, actorLogi
 
 AuditEventRepository принадлежит инфраструктуре; собственный query repository/service может читать AuditEvent через Criteria/Specification и возвращать DTO.
 
-CSV заказов (`CsvOrderService`, `CsvController`). Колонки, разделитель «;», UTF-8 с BOM: `code;title;description;category;status;budget;deadline;customerEmail;freelancerEmail;urgent;tags` (category — код категории, участники — email, теги через `|`). Импорт принимает те же колонки в любом порядке, разделитель «;» или «,», дату ГГГГ-ММ-ДД или ДД.ММ.ГГГГ, бюджет с запятой и пробелами. Значения, которые Excel принял бы за формулу (`= + - @`), экспорт экранирует апострофом, импорт его снимает.
-- `GET /api/orders/export` — VIEWER+. Те же фильтры и `sort`, что у `GET /api/orders`, без page/size: выгружаются все совпавшие заказы.
-- `POST /api/orders/import/preview` — EDITOR+, multipart `file` и `mode=CREATE_ONLY|UPSERT_BY_CODE`. Ничего не пишет: каждая строка проверяется `OrderService.validateCreate/validateUpdateByCode`. Ответ `{previewId,mode,totalRows,validRows,invalidRows,toCreate,toUpdate,issues:[{line,field,message}],expiresAt}`. Снимок корректных строк с версиями заказов хранится в памяти сервера 15 минут, у пользователя только последний. До 1000 строк, файл до 5 МБ.
-- `POST /api/orders/import/apply` — EDITOR+, `{previewId}`. Снимок одноразовый и только автора, иначе 404 PREVIEW_NOT_FOUND. Строки пишутся через `create`/`updateByCode` с версией из снимка одной транзакцией; ошибка любой строки (например, 409 VERSION_CONFLICT — заказ изменили после проверки) откатывает весь файл и аудит, сообщение начинается с «Строка N». Строки с ошибками из preview пропускаются. Ответ `{created,updated,skipped}`, в аудит пишется `ORDER_CSV_IMPORTED` (без содержимого файла) плюс обычные ORDER_CREATED/ORDER_UPDATED.
+CSV заказов (`CsvOrderService`, `CsvController`). Основной формат: UTF-8 с BOM, `;`,
+`code;title;description;categoryCode;status;budget;deadline;customerEmail;freelancerEmail;urgent;tags`.
+Теги через `|`; email разрешается в участника, категория — по code. Для совместимости
+принимаются прежняя колонка `category` и режим `CREATE_ONLY` (нормализуется в `NEW_ONLY`).
+Импорт также читает windows-1251, разделитель `,`, бюджет с пробелами/запятой и строго
+корректную дату `ДД.ММ.ГГГГ` или `ГГГГ-ММ-ДД`. `31.02.2027` — ошибка, без автокоррекции.
+Экспорт экранирует формулы Excel апострофом; повторный импорт снимает это экранирование.
 
-Аналитика — `GET /api/analytics/summary`, VIEWER+. Ответ `{total,active,archived,urgent,averageBudget,byCategory,byStatus,byPriority,priorityDate}`; группы `[{key,name,count}]`. total/active/archived — все заказы, остальное — только активные. Средний бюджет — SUM/COUNT в BigDecimal, округление HALF_UP до копеек, `null` без активных заказов. Категории и статусы — GROUP BY в БД (статусы всегда все пять, с нулями); приоритет — COUNT по тому же SQL CASE, что фильтр `priority` списка, с одной датой на всю сводку.
+- `GET /api/orders/export` — VIEWER+, все строки под общим фильтром и sort, без page/size.
+- `POST /api/orders/import/preview` — EDITOR+, multipart `file`, `mode=NEW_ONLY|UPSERT_BY_CODE`,
+  до 5 MiB/10 000 непустых записей. Ответ `{previewId,mode,totalRows,validRows,invalidRows,
+  toCreate,toUpdate,createdCount,updatedCount,issues:[{line,row,field,code,message}],expiresAt}`.
+  Preview не меняет заказы/аудит; сохраняет нормализованный снимок в `csv_import_previews`
+  на 15 минут с владельцем и исходными версиями. У аккаунта остаётся последний снимок.
+- `POST /api/orders/import/apply` — EDITOR+, только `{previewId}`. Чужой, использованный
+  или истёкший снимок — 404 PREVIEW_NOT_FOUND. Если в файле есть хотя бы одна ошибка —
+  400 VALIDATION_ERROR и никаких заказов/аудита. Валидный снимок блокируется SELECT FOR UPDATE,
+  записывается через OrderService и помечается использованным в той же транзакции.
+  Любая ошибка откатывает весь файл, аудит и usedAt; исходная version даёт 409 при конфликте.
+  Конкурентный повтор ждёт блокировку и после успешного первого commit получает 404.
+  Ответ `{created,updated,skipped:0}`; аудит `ORDER_CSV_IMPORTED` и события заказов без файла.
+  После рестарта снимок доступен до своего срока; после транзакционного отката возможен повтор.
+- `GET /api/analytics/summary` — VIEWER+, `{total,active,archived,urgent,
+  averageBudget,byCategory,byStatus,byPriority,priorityDate}`. Активные = неархивные,
+  среднее пустой базы null; группировки выполняются БД, priority — общий SQL CASE на одну дату.
 
 Чтение журнала — `GET /api/admin/audit`, только ADMIN. Параметры (все необязательны): `q` — текст без учёта регистра по actorLogin, action, entityType, summary и correlationId (`%` и `_` ищутся как обычные символы); `action`, `entityType` — точное совпадение кода; `entityId` — UUID; `from`, `to` — ISO-8601 в UTC, интервал [from, to); `page` ≥ 0, `size` 1–100 (по умолчанию 20); `sort` — `occurredAt|action|entityType|actorLogin`, `asc|desc`, по умолчанию `occurredAt,desc`. Ответ — `{content,page,size,totalElements,totalPages}`, элемент `{id,actorId,actorLogin,action,entityType,entityId,occurredAt,summary,correlationId}`. Неверные параметры — 400 VALIDATION_ERROR. Чтение идёт через `AuditQueryRepository` (только Specification, без save/delete). Аудит успешного CSV должен участвовать в транзакции apply. Поле action в этом модуле: LOGIN, LOGIN_FAILED, LOGOUT, PASSWORD_CHANGED; владельцы добавляют свои коды согласованно.
 
