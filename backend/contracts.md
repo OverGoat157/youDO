@@ -30,6 +30,8 @@ changePassword в адаптере повышает credentialsVersion и сни
 
 `CurrentUser.require()`/`optional()` — доступ к principal. `AuditWriter.record(action,entityType,publicId,summary)` должен вызываться внутри транзакции сервиса после бизнес-проверок. Заказ и его аудит откатываются вместе. Для заметок author_id берётся из CurrentUser.id(), не из входного DTO. Признак PERMANENT_DELETE_ENABLED проверяется уже на HTTP-границе, но сервис также должен проверять права, архивное состояние и версию при внутренних вызовах из CSV/других сервисов.
 
+Работающий контракт `OrderService`, методы для CSV, общий фильтр и SQL CASE приоритета описаны в [backend заказов](../docs/kr3-orders-api.md).
+
 Изменения схемы добавляет Денис следующей Flyway-версией. Применённые миграции сохраняются. Если модель требует других столбцов, согласуйте миграцию до подключения entity с ddl-auto=validate.
 
 ## CSV, аналитика и аудит — Сергей
@@ -52,4 +54,4 @@ AuditEventRepository принадлежит инфраструктуре; соб
 
 HttpOnly cookie в JavaScript не читается. WEB не получает refresh в JSON. Не пытайтесь использовать ANDROID как запасной браузерный путь: с Origin/cookie он отвергается. В fetch используйте ровно настроенный origin; localhost и 127.0.0.1 различаются. Для production с HTTPS включите secure-cookie и задайте фактический ALLOWED_ORIGINS, без `*`.
 
-Docker ожидает frontend/package.json, package-lock.json, script build и результат dist/. До появления модуля используется backend/static/index.html. Здесь нет чужого router/apiFetch/auth-экрана.
+Docker ожидает frontend/package.json, package-lock.json, script build и результат dist/. До появления модуля используется backend/static/index.html. React-клиент подключён: общий apiFetch/session/router, вход и пользователи, заказы и категории. Разделы CSV/аналитики/аудита подключает Сергей.

@@ -1,6 +1,6 @@
 # youDO — backend КР №3
 
-Самостоятельный Spring Boot 3.5.5 / Java 21 модуль. Модуль включает миграции, JWT-авторизацию, администрирование аккаунтов, справочник категорий и запись аудита. React-страницы входа, смены пароля и администрирования проверяются в [отдельном стенде](../docs/kr3-yura-integration.md). Общий React-клиент, API заказов, CSV, аналитика и чтение аудита ещё предстоит подключить.
+Самостоятельный Spring Boot 3.5.5 / Java 21 модуль. Модуль включает миграции, JWT-авторизацию, администрирование аккаунтов, справочник категорий и запись аудита. React-страницы входа, смены пароля и администрирования проверяются в [отдельном стенде](../docs/kr3-yura-integration.md). Подключены общий React-клиент и заказы Ангелины, backend заказов и чтение аудита Сергея. Контракт OrderService для CSV, API и priority: [backend заказов](../docs/kr3-orders-api.md). CSV/аналитику и страницы `/csv`, `/analytics`, `/audit` продолжает Сергей.
 
 ## Запуск
 
@@ -17,7 +17,7 @@ docker compose --env-file backend/.env -f backend/docker-compose.yml down
 
 Backend/web: `http://localhost:8080/`; health: `/actuator/health`; PostgreSQL: `127.0.0.1:55433`, база `youdo_backend`. Compose-проект `youdo-kr3` и volume `youdo-kr3_backend_data` отделены от `youdo-kr2`. `down` сохраняет данные. При изменении HTTP_PORT добавьте фактический origin в ALLOWED_ORIGINS. За reverse proxy настраивайте отдельное доверие к proxy: сейчас X-Forwarded-For игнорируется, лимит использует адрес непосредственного соединения.
 
-Docker собирает `frontend/` через `npm ci && npm run build`, когда у Ангелины появятся package.json, lockfile и выходной каталог `dist/`; файлы попадают внутрь JAR. До подключения React доступна информационная страница. Runtime работает от UID 10001. В образе используется Java 21 из Maven-образа, поэтому для уменьшения размера позже можно заменить runtime на JRE с curl.
+Docker собирает `frontend/` через `npm ci && npm run build`; готовый React попадает внутрь JAR и доступен на одном origin с API. Runtime работает от UID 10001. В образе используется Java 21 из Maven-образа, поэтому для уменьшения размера позже можно заменить runtime на JRE с curl.
 
 Для запуска без Docker нужны Java 21, Maven 3.9+ и отдельная PostgreSQL 16. Передайте DB_URL, DB_USER, DB_PASSWORD, JWT_SECRET и при необходимости bootstrap-переменные в окружении, затем `mvn -f backend/pom.xml spring-boot:run`. Spring сам не читает `backend/.env`; Compose передаёт значения явно. Hibernate только проверяет схему (`validate`), SQL выполняет Flyway.
 
