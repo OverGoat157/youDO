@@ -72,7 +72,8 @@ function buildHeaders(init?: RequestInit): Headers {
 function canReplay(method: string, body: BodyInit | null | undefined): boolean {
   const verb = method.toUpperCase();
   if (verb === 'GET' || verb === 'HEAD') return true;
-  return body === undefined || body === null || typeof body === 'string';
+  // FormData can be serialized again; fetch supplies its multipart boundary.
+  return body === undefined || body === null || typeof body === 'string' || body instanceof FormData;
 }
 
 async function send(path: string, init: RequestInit = {}): Promise<Response> {

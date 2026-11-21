@@ -61,4 +61,4 @@ CSV заказов (`CsvOrderService`, `CsvController`). Колонки, раз�
 
 HttpOnly cookie в JavaScript не читается. WEB не получает refresh в JSON. Не пытайтесь использовать ANDROID как запасной браузерный путь: с Origin/cookie он отвергается. В fetch используйте ровно настроенный origin; localhost и 127.0.0.1 различаются. Для production с HTTPS включите secure-cookie и задайте фактический ALLOWED_ORIGINS, без `*`.
 
-Docker ожидает frontend/package.json, package-lock.json, script build и результат dist/. До появления модуля используется backend/static/index.html. React-клиент подключён: общий apiFetch/session/router, вход и пользователи, заказы и категории. Разделы CSV/аналитики/аудита подключает Сергей.
+Docker ожидает frontend/package.json, package-lock.json, script build и результат dist/. До появления модуля используется backend/static/index.html. React-клиент подключён: общий apiFetch/session/router, вход и пользователи, заказы и категории. Разделы CSV/аналитики/аудита Сергея подключены. После 401 общий клиент повторяет multipart FormData один раз через общий refresh, сохраняя файл; Content-Type с boundary задаёт браузер.
