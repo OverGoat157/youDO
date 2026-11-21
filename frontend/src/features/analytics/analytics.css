@@ -1,0 +1,22 @@
+.analytics-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
+  gap: .75rem;
+  margin: 0 0 1rem;
+}
+.app-content .analytics-tile { margin: 0; padding: .9rem 1rem; }
+.analytics-tile dt { font-size: .8rem; color: var(--yd-muted); }
+.analytics-tile dd { margin: .2rem 0 0; font-size: 1.5rem; font-weight: 650; }
+.analytics-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 1rem;
+  margin-bottom: .75rem;
+}
+.app-content .analytics-group { margin: 0; }
+.app-content .analytics-group th { text-align: left; font-weight: 500; text-transform: none; letter-spacing: 0; background: none; border: 0; padding: .45rem .5rem .45rem 0; }
+.app-content .analytics-group td { padding: .45rem 0; border: 0; }
+.app-content .analytics-group tbody tr:hover td { background: none; }
+.analytics-bar-cell { width: 45%; }
+.analytics-bar { display: block; height: .55rem; border-radius: 4px; background: var(--yd-accent); }
+.analytics-count { width: 3rem; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }

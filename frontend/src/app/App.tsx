@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { linkProps, matchPath, navigate, useLocationPath } from './router';
 import { isAdmin, session, useSession, type Account } from '../api/session';
 import { apiFetch } from '../api/client';
-import { LoadingScreen, NotFoundPage, Redirect, UnavailablePage } from './ui';
+import { LoadingScreen, NotFoundPage, Redirect } from './ui';
 import { LoginPage } from '../features/auth/LoginPage';
 import { ChangePasswordPage } from '../features/auth/ChangePasswordPage';
 import { UsersPage } from '../features/users/UsersPage';
@@ -11,6 +11,8 @@ import { OrderCardPage } from '../features/orders/OrderCardPage';
 import { OrderFormPage } from '../features/orders/OrderFormPage';
 import { CategoriesPage } from '../features/categories/CategoriesPage';
 import { AuditPage } from '../features/audit/AuditPage';
+import { CsvPage } from '../features/csv/CsvPage';
+import { AnalyticsPage } from '../features/analytics/AnalyticsPage';
 import './app.css';
 
 interface NavItem {
@@ -116,9 +118,9 @@ function resolveRoute(location: string, state: ReturnType<typeof useSession>) {
     return isAdmin(user) ? <UsersPage apiFetch={apiFetch} currentUser={user} /> : <Redirect to="/orders" />;
   }
 
-  if (matchPath('/csv', path)) return <UnavailablePage title="CSV" />;
+  if (matchPath('/csv', path)) return <CsvPage user={user} />;
 
-  if (matchPath('/analytics', path)) return <UnavailablePage title="Аналитика" />;
+  if (matchPath('/analytics', path)) return <AnalyticsPage />;
 
   if (matchPath('/audit', path)) {
     if (!isAdmin(user)) return <Redirect to="/orders" />;
