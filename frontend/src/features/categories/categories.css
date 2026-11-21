@@ -1,0 +1,3 @@
+/* Локальные стили справочника категорий. */
+.category-editor { max-width: 640px; margin-bottom: 1.5rem; }
+.category-editor .check-label { margin: 1rem 0; }

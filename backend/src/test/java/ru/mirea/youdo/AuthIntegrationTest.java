@@ -83,6 +83,39 @@ class AuthIntegrationTest {
         assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history where success and version is not null",Integer.class)).isEqualTo(4);
         assertThat(jdbc.queryForObject("select count(*) from categories",Integer.class)).isEqualTo(5);
     }
+    @Test void browserRoutesLoadWithoutBearerWhileAdminApiStaysProtected() throws Exception {
+        for (String route : List.of("/login", "/change-password", "/admin/users", "/categories",
+                "/orders", "/orders/new", "/orders/" + UUID.randomUUID(), "/csv", "/analytics", "/audit")) {
+            mvc.perform(get(route)).andExpect(status().isOk()).andExpect(forwardedUrl("/index.html"));
+        }
+        mvc.perform(get("/index.html")).andExpect(status().isOk())
+            .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML));
+        mvc.perform(get("/api/admin/users")).andExpect(status().isUnauthorized());
+        account("VIEWER", false);
+        mvc.perform(get("/api/admin/users").header("Authorization", "Bearer " + login("VIEWER").path("accessToken").asText()))
+            .andExpect(status().isForbidden());
+    }
+    @Test void adminPasswordResetRevokesTokensAndRequiresTemporaryPasswordChange() throws Exception {
+        account("ADMIN", false);
+        UUID id = account("EDITOR", false);
+        String admin = "Bearer " + login("ADMIN").path("accessToken").asText();
+        var old = login("EDITOR");
+        var result = mvc.perform(post("/api/admin/users/" + id + "/reset-password")
+            .header("Authorization", admin).contentType(MediaType.APPLICATION_JSON)
+            .content(json.writeValueAsString(Map.of("temporaryPassword", NEXT))))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.mustChangePassword").value(true))
+            .andExpect(jsonPath("$.credentialsVersion").value(1)).andReturn();
+        assertThat(result.getResponse().getContentAsString()).doesNotContain(NEXT, "passwordHash", "temporaryPassword");
+        mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + old.path("accessToken").asText()))
+            .andExpect(status().isUnauthorized());
+        session("refresh", old.path("refreshToken").asText()).andExpect(status().isUnauthorized());
+        loginBody("editor@example.org", PASSWORD, "ANDROID", null, null, 401);
+        var temporary = loginBody("editor@example.org", NEXT, "ANDROID", null, null, 200);
+        mvc.perform(get("/api/categories").header("Authorization", "Bearer " + temporary.path("accessToken").asText()))
+            .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("PASSWORD_CHANGE_REQUIRED"));
+        assertThat(jdbc.queryForObject("select summary from audit_events where action='ACCOUNT_PASSWORD_RESET'", String.class))
+            .doesNotContain(NEXT, PASSWORD);
+    }
     @Test void loginMeHashAndCorrelation() throws Exception {
         UUID id=account("VIEWER",false);
         var response=mvc.perform(post("/api/auth/login").header("X-Correlation-ID","login_check-1")
