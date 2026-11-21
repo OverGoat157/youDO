@@ -43,12 +43,23 @@ export const ACTION_LABELS: Record<string, string> = {
   ACCOUNT_PASSWORD_RESET: 'Сброс пароля',
   CATEGORY_CREATED: 'Создана категория',
   CATEGORY_UPDATED: 'Изменена категория',
+  ORDER_CREATED: 'Создан заказ',
+  ORDER_UPDATED: 'Изменён заказ',
+  ORDER_ARCHIVED: 'Заказ в архиве',
+  ORDER_RESTORED: 'Заказ восстановлен',
+  ORDER_DELETED: 'Заказ удалён навсегда',
+  ORDER_STATUS_CHANGED: 'Изменён статус заказа',
+  ORDER_TAGS_CHANGED: 'Изменены теги заказа',
+  ORDER_NOTE_CREATED: 'Добавлена заметка',
+  ORDER_NOTE_UPDATED: 'Изменена заметка',
+  ORDER_NOTE_DELETED: 'Удалена заметка',
 };
 
 export const ENTITY_LABELS: Record<string, string> = {
   ACCOUNT: 'Учётная запись',
   CATEGORY: 'Категория',
   ORDER: 'Заказ',
+  ORDER_NOTE: 'Заметка заказа',
 };
 
 /** Местное время из поля формы → ISO в UTC, как ждёт сервер. */
