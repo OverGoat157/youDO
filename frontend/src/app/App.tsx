@@ -10,6 +10,7 @@ import { OrdersPage } from '../features/orders/OrdersPage';
 import { OrderCardPage } from '../features/orders/OrderCardPage';
 import { OrderFormPage } from '../features/orders/OrderFormPage';
 import { CategoriesPage } from '../features/categories/CategoriesPage';
+import { AuditPage } from '../features/audit/AuditPage';
 import './app.css';
 
 interface NavItem {
@@ -121,7 +122,7 @@ function resolveRoute(location: string, state: ReturnType<typeof useSession>) {
 
   if (matchPath('/audit', path)) {
     if (!isAdmin(user)) return <Redirect to="/orders" />;
-    return <UnavailablePage title="Аудит" />;
+    return <AuditPage />;
   }
 
   return <NotFoundPage />;
