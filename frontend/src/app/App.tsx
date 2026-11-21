@@ -18,6 +18,16 @@ interface NavItem {
   adminOnly?: boolean;
 }
 
+/**
+ * После смены пароля сессия очищается и router уводит на вход.
+ * Подменяем только clear: экран Юры не знает про уведомление, а пользователь должен
+ * увидеть, что пароль изменён, а не «просто форму входа».
+ */
+const passwordChangeSession = {
+  login: session.login,
+  clear: () => session.clear('Пароль изменён. Войдите с новым паролем.'),
+};
+
 const NAV: NavItem[] = [
   { path: '/orders', label: 'Заказы' },
   { path: '/categories', label: 'Категории' },
@@ -84,12 +94,12 @@ function resolveRoute(location: string, state: ReturnType<typeof useSession>) {
 
   if (mustChangePassword) {
     return isChangePassword
-      ? <ChangePasswordPage apiFetch={apiFetch} session={session} navigate={navigate} required />
+      ? <ChangePasswordPage apiFetch={apiFetch} session={passwordChangeSession} navigate={navigate} required />
       : <Redirect to="/change-password" />;
   }
 
   if (isChangePassword) {
-    return <ChangePasswordPage apiFetch={apiFetch} session={session} navigate={navigate} />;
+    return <ChangePasswordPage apiFetch={apiFetch} session={passwordChangeSession} navigate={navigate} />;
   }
 
   if (path === '/' || path === '') return <Redirect to="/orders" />;
