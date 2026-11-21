@@ -36,7 +36,9 @@ changePassword в адаптере повышает credentialsVersion и сни
 
 AuditEvent — таблица audit_events: UUID id, actorId nullable, actorLogin nullable, action/entityType до 60, entityId nullable UUID, occurredAt UTC, summary до 500, correlationId до 64. События не зависят FK от удаляемых сущностей: история сохраняется. Невалидный логин не пишется в audit; LOGIN_FAILED имеет пустого actor. Для бизнес-события используйте стабильный код действия и короткое описание без паролей, токенов, содержимого CSV и персонального текста заметок.
 
-AuditEventRepository принадлежит инфраструктуре; собственный query repository/service может читать AuditEvent через Criteria/Specification и возвращать DTO. Чтение журнала и бизнес-аналитика здесь не реализованы. Аудит успешного CSV должен участвовать в транзакции apply. Поле action в этом модуле: LOGIN, LOGIN_FAILED, LOGOUT, PASSWORD_CHANGED; владельцы добавляют свои коды согласованно.
+AuditEventRepository принадлежит инфраструктуре; собственный query repository/service может читать AuditEvent через Criteria/Specification и возвращать DTO. Бизнес-аналитика и CSV здесь пока не реализованы.
+
+Чтение журнала — `GET /api/admin/audit`, только ADMIN. Параметры (все необязательны): `q` — текст без учёта регистра по actorLogin, action, entityType, summary и correlationId (`%` и `_` ищутся как обычные символы); `action`, `entityType` — точное совпадение кода; `entityId` — UUID; `from`, `to` — ISO-8601 в UTC, интервал [from, to); `page` ≥ 0, `size` 1–100 (по умолчанию 20); `sort` — `occurredAt|action|entityType|actorLogin`, `asc|desc`, по умолчанию `occurredAt,desc`. Ответ — `{content,page,size,totalElements,totalPages}`, элемент `{id,actorId,actorLogin,action,entityType,entityId,occurredAt,summary,correlationId}`. Неверные параметры — 400 VALIDATION_ERROR. Чтение идёт через `AuditQueryRepository` (только Specification, без save/delete). Аудит успешного CSV должен участвовать в транзакции apply. Поле action в этом модуле: LOGIN, LOGIN_FAILED, LOGOUT, PASSWORD_CHANGED; владельцы добавляют свои коды согласованно.
 
 ## Web — Ангелина и Юра
 
