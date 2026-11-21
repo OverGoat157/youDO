@@ -1,9 +1,3 @@
-/**
- * Состояние сессии youDO.
- *
- * Access-токен живёт только в памяти api-клиента; refresh хранится в HttpOnly cookie,
- * поэтому восстановление сессии всегда идёт через POST /api/auth/refresh.
- */
 import { useSyncExternalStore } from 'react';
 import {
   apiFetch, jsonRequest, setAccessToken, setRefreshHandler,
@@ -18,7 +12,7 @@ export interface Account {
   login: string;
   roles: Role[];
   mustChangePassword: boolean;
-  /** Поля есть в административном DTO; /me их не отдаёт, поэтому значения по умолчанию. */
+
   active: boolean;
   credentialsVersion: number;
 }
@@ -94,7 +88,7 @@ class SessionStore {
     return this.state.user !== null;
   }
 
-  /** Вход: access и пользователь остаются в памяти, refresh приходит HttpOnly cookie. */
+
   login = async (input: LoginInput): Promise<{ user: Account }> => {
     const payload = await apiFetch<TokenPayload>('/api/auth/login', jsonRequest('POST', {
       login: input.login.trim().toLowerCase(),
@@ -111,7 +105,7 @@ class SessionStore {
     return { user };
   };
 
-  /** Восстановление при открытии приложения: refresh по cookie, затем /me. */
+
   restore = async (): Promise<void> => {
     if (this.restoreStarted) return;
     this.restoreStarted = true;
@@ -143,7 +137,7 @@ class SessionStore {
     try {
       await apiFetch<void>('/api/auth/logout', jsonRequest('POST', { clientType: 'WEB' }));
     } catch {
-      // Logout допустим и с истёкшим access: cookie всё равно очищается ответом.
+
     }
     this.clear(null);
   };
@@ -174,17 +168,14 @@ class SessionStore {
 
 export const session = new SessionStore();
 
-/** Сессия завершена сервером или refresh не удался. */
 setSessionExpiredHandler(() => {
   if (session.isAuthenticated()) session.clear('Сессия истекла. Войдите снова.');
 });
 
-/** Сервер требует смены временного пароля (403 PASSWORD_CHANGE_REQUIRED). */
 setPasswordChangeRequiredHandler(() => {
   session.requireChangePassword();
 });
 
-/** Один общий refresh для всех одновременных 401. */
 setRefreshHandler(async () => {
   try {
     const payload = await apiFetch<TokenPayload>('/api/auth/refresh', jsonRequest('POST', { clientType: 'WEB' }));
@@ -204,7 +195,6 @@ export function hasRole(user: Account | null, role: Role): boolean {
   return Boolean(user?.roles.includes(role));
 }
 
-/** Просмотр доступен всем, изменения — EDITOR и ADMIN. */
 export function canEdit(user: Account | null): boolean {
   return hasRole(user, 'EDITOR') || hasRole(user, 'ADMIN');
 }

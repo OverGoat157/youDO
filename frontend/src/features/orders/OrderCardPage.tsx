@@ -94,9 +94,9 @@ export function OrderCardPage({ user, orderId }: OrderCardPageProps) {
           text: 'Заказ уже изменён другим пользователем. Введённые данные не перезаписываются: перечитайте карточку и повторите действие.',
         });
       } else if (api.status === 403) {
-        setNotice({ kind: 'error', text: 'Недостаточно прав: полное удаление выполняет только администратор при включённой настройке сервера.' });
+        setNotice({ kind: 'error', text: 'Удалять заказы навсегда может только администратор.' });
       } else if (api.status === 404) {
-        setNotice({ kind: 'error', text: 'Операция недоступна: заказ не найден или постоянное удаление выключено настройкой сервера.' });
+        setNotice({ kind: 'error', text: 'Заказ не найден или уже удалён.' });
       } else {
         setNotice({ kind: 'error', text: api.message || 'Действие не выполнено.' });
       }
@@ -173,7 +173,6 @@ export function OrderCardPage({ user, orderId }: OrderCardPageProps) {
           <div><dt>Исполнитель</dt><dd>{order.freelancerName ?? 'не назначен'}</dd></div>
           <div><dt>Создан</dt><dd>{formatDateTime(order.createdAt)}</dd></div>
           <div><dt>Изменён</dt><dd>{formatDateTime(order.updatedAt)}</dd></div>
-          <div><dt>Версия</dt><dd>{order.version}</dd></div>
         </dl>
         <h3>Описание</h3>
         <p className="preserve-lines">{order.description || 'Описание не заполнено.'}</p>
@@ -196,7 +195,7 @@ export function OrderCardPage({ user, orderId }: OrderCardPageProps) {
       <ConfirmDialog
         open={pending === 'archive'}
         title="Перенести заказ в архив?"
-        description={<p>Запись останется в базе, её можно восстановить. Действие меняет версию заказа.</p>}
+        description={<p>Запись останется в базе, её можно восстановить.</p>}
         confirmLabel="Перенести в архив"
         busy={actionBusy}
         onConfirm={() => runAction('archive')}
@@ -214,7 +213,7 @@ export function OrderCardPage({ user, orderId }: OrderCardPageProps) {
       <ConfirmDialog
         open={pending === 'delete'}
         title="Удалить заказ навсегда?"
-        description={<p>Действие необратимо: запись, теги и заметки будут удалены, история изменений останется только в аудите. Доступно администратору при включённой настройке сервера.</p>}
+        description={<p>Действие необратимо: заказ, его теги и заметки будут удалены без возможности восстановления.</p>}
         confirmLabel="Удалить навсегда"
         danger
         busy={actionBusy}
@@ -304,7 +303,7 @@ function NotesSection({ orderId, notes, loading, error, editable, onChanged, onR
       <h2 id="notes-title">Заметки</h2>
       {error && (
         <div className="alert alert--error" role="alert">
-          <p>{error.status === 404 ? 'Модуль заметок пока не подключён к backend.' : error.message}</p>
+          <p>{error.status === 404 ? 'Заметки недоступны для этого заказа.' : error.message}</p>
           <p><button type="button" className="button--secondary" onClick={onRetry}>Повторить загрузку</button></p>
         </div>
       )}

@@ -33,7 +33,7 @@ describe('session', () => {
     expect(session.getSnapshot().status).toBe('authenticated');
     const requested = fetchMock.mock.calls[0][0] as string;
     expect(requested).toBe('/api/auth/login');
-    // Access не попадает в читаемые cookie и остаётся только в памяти модуля.
+
     expect(document.cookie).not.toContain('access-1');
   });
 

@@ -221,7 +221,7 @@ export function OrderFormPage({ user, orderId }: OrderFormPageProps) {
       <header className="page-header">
         <div>
           <h1 id="form-title">{editing ? 'Изменение заказа' : 'Новый заказ'}</h1>
-          <p className="muted">Все поля сохраняются через REST; связанные участники выбираются по имени и email</p>
+          <p className="muted">Заполните условия заказа и выберите участников</p>
         </div>
       </header>
 
@@ -285,7 +285,6 @@ export function OrderFormPage({ user, orderId }: OrderFormPageProps) {
               onChange={event => update('status', event.target.value as OrderStatus)}>
               {selectableStatuses.map(status => <option key={status} value={status}>{STATUS_LABELS[status]}</option>)}
             </select>
-            <p className="muted small">Доступны только разрешённые переходы; новый заказ создаётся открытым.</p>
             {fieldErrors.status && <p className="field-error">{fieldErrors.status}</p>}
           </div>
           <div className={`field${fieldErrors.budget ? ' field--invalid' : ''}`}>
@@ -325,14 +324,13 @@ export function OrderFormPage({ user, orderId }: OrderFormPageProps) {
             <label htmlFor="order-description">Описание</label>
             <textarea id="order-description" rows={6} maxLength={5000} value={form.description}
               onChange={event => update('description', event.target.value)} disabled={busy} />
-            <p className="muted small">{form.description.length} из 5000 символов</p>
             {fieldErrors.description && <p className="field-error">{fieldErrors.description}</p>}
           </div>
           <div className={`field${fieldErrors.tags ? ' field--invalid' : ''}`}>
             <label htmlFor="order-tags">Теги</label>
-            <input id="order-tags" value={form.tags} placeholder="backend, срочно"
+            <input id="order-tags" value={form.tags} placeholder="лендинг, срочно"
               onChange={event => update('tags', event.target.value)} disabled={busy} />
-            <p className="muted small">Через запятую, до 20 тегов по 50 символов; сохраняются в нижнем регистре.</p>
+            <p className="muted small">Через запятую</p>
             {fieldErrors.tags && <p className="field-error">{fieldErrors.tags}</p>}
           </div>
           <label className="check-label field">
@@ -346,7 +344,7 @@ export function OrderFormPage({ user, orderId }: OrderFormPageProps) {
             onClick={() => navigate(editing && current ? `/orders/${current.id}` : '/orders')}>
             Отмена
           </button>
-          {editing && current && <span className="muted small">Версия {version} · дедлайн {formatDeadline(current.deadline)}</span>}
+          {editing && current && <span className="muted small">Текущий дедлайн: {formatDeadline(current.deadline)}</span>}
         </div>
       </form>
     </main>
@@ -364,7 +362,6 @@ interface ParticipantPickerProps {
   onChange: (value: Participant | null) => void;
 }
 
-/** Выбор участника по имени/email: ID вводятся не вручную, список приходит из /api/participants. */
 function ParticipantPicker({ id, role, label, value, disabled, optional, error, onChange }: ParticipantPickerProps) {
   const [query, setQuery] = useState('');
   const [options, setOptions] = useState<Participant[]>([]);
@@ -410,9 +407,7 @@ function ParticipantPicker({ id, role, label, value, disabled, optional, error, 
               {loading && <p className="muted small" role="status">Ищем…</p>}
               {failure && (
                 <p className="small field-error" role="alert">
-                  {failure.status === 404
-                    ? 'API выбора участников ещё не подключён к backend.'
-                    : failure.message || 'Не удалось загрузить список участников.'}
+                  {failure.status === 404 ? 'Список участников недоступен.' : failure.message || 'Не удалось загрузить список участников.'}
                 </p>
               )}
               {!loading && !failure && options.length === 0 && <p className="muted small">Ничего не найдено.</p>}
@@ -427,7 +422,6 @@ function ParticipantPicker({ id, role, label, value, disabled, optional, error, 
         </div>
       )}
       {error && <p className="field-error" id={`${id}-error`}>{error}</p>}
-      <p className="muted small">Участники выбираются из справочника КР №1; числовой ID вручную не вводится.</p>
     </div>
   );
 }

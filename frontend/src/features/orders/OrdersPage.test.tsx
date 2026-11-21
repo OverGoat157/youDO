@@ -82,16 +82,16 @@ describe('OrdersPage', () => {
 
     await user.type(screen.getByLabelText('Поиск'), 'лендинг');
     await user.selectOptions(screen.getByLabelText('Статус'), 'IN_PROGRESS');
-    await user.selectOptions(screen.getByLabelText('Бюджет'), 'gte');
-    await user.type(screen.getByLabelText('Значение бюджета'), '1000');
+    await user.type(screen.getByLabelText('Бюджет от'), '1000');
+    await user.type(screen.getByLabelText('Бюджет до'), '5000');
     await user.click(screen.getByRole('button', { name: 'Найти' }));
 
     await waitFor(() => {
       const last = fetchMock.mock.calls.map(call => call[0] as string).filter(url => url.startsWith('/api/orders')).pop()!;
       expect(last).toContain('q=%D0%BB%D0%B5%D0%BD%D0%B4%D0%B8%D0%BD%D0%B3');
       expect(last).toContain('status=IN_PROGRESS');
-      expect(last).toContain('budgetOp=gte');
-      expect(last).toContain('budgetValue=1000');
+      expect(last).toContain('budgetFrom=1000');
+      expect(last).toContain('budgetTo=5000');
       expect(last).toContain('page=0');
     });
   });

@@ -1,8 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// Один origin в итоговой сборке: backend раздаёт содержимое dist/.
-// В разработке Vite проксирует /api на локальный backend, поэтому cookie и Origin совпадают.
 export default defineConfig({
   plugins: [react()],
   server: {

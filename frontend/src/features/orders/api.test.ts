@@ -26,8 +26,8 @@ describe('buildOrderParams', () => {
       urgent: 'true',
       priority: 'HIGH',
       archived: 'all',
-      budgetOp: 'gte',
-      budgetValue: ' 1000 ',
+      budgetFrom: ' 1000 ',
+      budgetTo: '5000',
     });
     expect(params.get('q')).toBe('лендинг');
     expect(params.get('status')).toBe('OPEN');
@@ -36,14 +36,26 @@ describe('buildOrderParams', () => {
     expect(params.get('urgent')).toBe('true');
     expect(params.get('priority')).toBe('HIGH');
     expect(params.get('archived')).toBe('all');
-    expect(params.get('budgetOp')).toBe('gte');
-    expect(params.get('budgetValue')).toBe('1000');
+    expect(params.get('budgetFrom')).toBe('1000');
+    expect(params.get('budgetTo')).toBe('5000');
   });
 
-  it('не отправляет значение бюджета без оператора', () => {
-    const params = buildOrderParams({ ...base, budgetValue: '10' });
-    expect(params.get('budgetValue')).toBeNull();
+  it('выражает одну границу бюджета общим договором budgetOp/budgetValue', () => {
+    const fromOnly = buildOrderParams({ ...base, budgetFrom: '1000' });
+    expect(fromOnly.get('budgetOp')).toBe('gte');
+    expect(fromOnly.get('budgetValue')).toBe('1000');
+    expect(fromOnly.get('budgetFrom')).toBeNull();
+
+    const toOnly = buildOrderParams({ ...base, budgetTo: '5000' });
+    expect(toOnly.get('budgetOp')).toBe('lte');
+    expect(toOnly.get('budgetValue')).toBe('5000');
+  });
+
+  it('не отправляет пустой бюджет', () => {
+    const params = buildOrderParams(base);
     expect(params.get('budgetOp')).toBeNull();
+    expect(params.get('budgetValue')).toBeNull();
+    expect(params.get('budgetFrom')).toBeNull();
   });
 
   it('для экспорта оставляет условия, но не страницу', () => {

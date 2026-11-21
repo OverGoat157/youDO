@@ -30,7 +30,7 @@ export function CategoriesPage({ user }: { user: Account }) {
     const controller = new AbortController();
     setLoading(true);
     setError(null);
-    // Справочник читается целиком: отключённые категории остаются видимыми в старых заказах.
+
     listCategories(controller.signal)
       .then(setCategories)
       .catch(cause => {
@@ -55,7 +55,7 @@ export function CategoriesPage({ user }: { user: Account }) {
       <header className="page-header">
         <div>
           <h1 id="categories-title">Категории</h1>
-          <p className="muted">Справочник заказов: список доступен всем, изменение — администратору</p>
+          <p className="muted">Категории заказов</p>
         </div>
         {admin && <button ref={createButton} type="button" onClick={() => setEditor({ kind: 'create' })} disabled={!!editor}>Создать категорию</button>}
       </header>
@@ -98,7 +98,6 @@ export function CategoriesPage({ user }: { user: Account }) {
         </div>
       )}
 
-      <p className="muted small">Категории не удаляются: администратор меняет название, код и признак «доступна». Уже назначенную отключённую категорию заказ сохраняет.</p>
     </main>
   );
 }

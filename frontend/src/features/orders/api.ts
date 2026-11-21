@@ -1,11 +1,9 @@
-/** Вызовы REST заказов, справочника категорий и участников. */
 import { apiFetch, apiDownload, jsonRequest } from '../../api/client';
 import type {
   BulkAction, BulkResult, Category, OrderNote, OrderQuery, OrderResponse,
   OrderUpdate, OrderWrite, Page, Participant,
 } from './types';
 
-/** Параметры поиска: пустые значения не отправляются, условия соединяются через AND на сервере. */
 export function buildOrderParams(query: OrderQuery, includePaging = true): URLSearchParams {
   const params = new URLSearchParams();
   const text: Array<[string, string]> = [
@@ -21,9 +19,19 @@ export function buildOrderParams(query: OrderQuery, includePaging = true): URLSe
     const trimmed = value.trim();
     if (trimmed) params.set(key, trimmed);
   }
-  if (query.budgetOp && query.budgetValue.trim()) {
-    params.set('budgetOp', query.budgetOp);
-    params.set('budgetValue', query.budgetValue.trim());
+
+
+  const from = query.budgetFrom.trim();
+  const to = query.budgetTo.trim();
+  if (from && to) {
+    params.set('budgetFrom', from);
+    params.set('budgetTo', to);
+  } else if (from) {
+    params.set('budgetOp', 'gte');
+    params.set('budgetValue', from);
+  } else if (to) {
+    params.set('budgetOp', 'lte');
+    params.set('budgetValue', to);
   }
   if (includePaging) {
     params.set('page', String(query.page));
@@ -57,7 +65,6 @@ export function restoreOrder(id: string, version: number): Promise<OrderResponse
   return apiFetch<OrderResponse>(`/api/orders/${encodeURIComponent(id)}/restore`, jsonRequest('POST', { version }));
 }
 
-/** Доступно только ADMIN и только при включённой настройке PERMANENT_DELETE_ENABLED. */
 export function deleteOrderPermanently(id: string, version: number): Promise<void> {
   return apiFetch<void>(`/api/orders/${encodeURIComponent(id)}/permanent?version=${version}`, { method: 'DELETE' });
 }
@@ -108,7 +115,6 @@ export function listParticipants(query: ParticipantQuery = {}, signal?: AbortSig
   return apiFetch<Page<Participant>>(`/api/participants?${params.toString()}`, { signal });
 }
 
-/** Экспорт по тем же условиям; модуль CSV принадлежит Сергею, кнопка — здесь. */
 export function exportOrders(query: OrderQuery): Promise<{ blob: Blob; filename: string | null }> {
   return apiDownload(`/api/orders/export?${buildOrderParams(query, false).toString()}`);
 }

@@ -1,4 +1,3 @@
-/** Минимальный router на History API: маршруты, параметры пути, навигация. */
 import { useSyncExternalStore, type MouseEvent } from 'react';
 
 const listeners = new Set<() => void>();
@@ -35,7 +34,6 @@ export function navigate(path: string, options: NavigateOptions = {}): void {
   emit();
 }
 
-/** Ссылка с перехватом клика: адрес копируется, переход не перезагружает приложение. */
 export function linkProps(path: string): {
   href: string;
   onClick: (event: MouseEvent<HTMLAnchorElement>) => void;
@@ -52,7 +50,6 @@ export function linkProps(path: string): {
 
 export type RouteParams = Record<string, string>;
 
-/** '/orders/:id' + '/orders/abc' → {id: 'abc'} */
 export function matchPath(pattern: string, path: string): RouteParams | null {
   const clean = path.split('?')[0].replace(/\/+$/, '') || '/';
   if (pattern === clean) return {};

@@ -1,9 +1,6 @@
-/** DTO заказов из договора PLAN3 (backend Карима). */
-
 export type OrderStatus = 'OPEN' | 'IN_PROGRESS' | 'ON_REVIEW' | 'COMPLETED' | 'CANCELLED';
 export type OrderPriority = 'LOW' | 'MEDIUM' | 'HIGH';
 export type ArchivedFilter = 'false' | 'true' | 'all';
-export type BudgetOperator = 'eq' | 'gt' | 'gte' | 'lt' | 'lte';
 export type SortField = 'title' | 'budget' | 'deadline' | 'createdAt';
 export type SortDirection = 'asc' | 'desc';
 
@@ -22,7 +19,6 @@ export interface Category {
   active: boolean;
 }
 
-/** Participants остаются на прежних числовых ID КР №1; UUID у заказов, аккаунтов и категорий. */
 export type ParticipantId = number | string;
 
 export interface Participant {
@@ -104,8 +100,8 @@ export interface OrderFilter {
   priority: string;
   tag: string;
   archived: ArchivedFilter;
-  budgetOp: BudgetOperator | '';
-  budgetValue: string;
+  budgetFrom: string;
+  budgetTo: string;
 }
 
 export interface OrderQuery extends OrderFilter {
@@ -117,7 +113,7 @@ export interface OrderQuery extends OrderFilter {
 
 export const EMPTY_FILTER: OrderFilter = {
   q: '', categoryId: '', status: '', urgent: '', priority: '', tag: '',
-  archived: 'false', budgetOp: '', budgetValue: '',
+  archived: 'false', budgetFrom: '', budgetTo: '',
 };
 
 export const STATUS_LABELS: Record<OrderStatus, string> = {
@@ -134,7 +130,6 @@ export const PRIORITY_LABELS: Record<OrderPriority, string> = {
   HIGH: 'Высокий',
 };
 
-/** Разрешённые переходы статусов из договора; сервер проверяет их независимо. */
 export const STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   OPEN: ['IN_PROGRESS', 'CANCELLED'],
   IN_PROGRESS: ['ON_REVIEW', 'CANCELLED'],
@@ -167,7 +162,6 @@ export function formatDeadline(value: string | null | undefined): string {
   return date.toLocaleDateString('ru-RU');
 }
 
-/** Теги: trim, нижний регистр, без пустых и повторов, до 20 штук по 50 символов. */
 export function normalizeTags(input: string | string[]): string[] {
   const raw = Array.isArray(input) ? input : input.split(/[,\n;]+/);
   const result: string[] = [];

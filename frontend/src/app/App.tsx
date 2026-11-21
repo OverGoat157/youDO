@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { linkProps, matchPath, navigate, useLocationPath } from './router';
 import { isAdmin, session, useSession, type Account } from '../api/session';
 import { apiFetch } from '../api/client';
-import { LoadingScreen, ModulePlaceholder, NotFoundPage, Redirect } from './ui';
+import { LoadingScreen, NotFoundPage, Redirect, UnavailablePage } from './ui';
 import { LoginPage } from '../features/auth/LoginPage';
 import { ChangePasswordPage } from '../features/auth/ChangePasswordPage';
 import { UsersPage } from '../features/users/UsersPage';
@@ -18,11 +18,6 @@ interface NavItem {
   adminOnly?: boolean;
 }
 
-/**
- * После смены пароля сессия очищается и router уводит на вход.
- * Подменяем только clear: экран Юры не знает про уведомление, а пользователь должен
- * увидеть, что пароль изменён, а не «просто форму входа».
- */
 const passwordChangeSession = {
   login: session.login,
   clear: () => session.clear('Пароль изменён. Войдите с новым паролем.'),
@@ -120,35 +115,13 @@ function resolveRoute(location: string, state: ReturnType<typeof useSession>) {
     return isAdmin(user) ? <UsersPage apiFetch={apiFetch} currentUser={user} /> : <Redirect to="/orders" />;
   }
 
-  if (matchPath('/csv', path)) {
-    return (
-      <ModulePlaceholder
-        title="CSV: импорт и экспорт"
-        owner="Сергей"
-        description="Проверка файла, два режима применения и экспорт текущих условий подключаются из ветки feature/kr3-csv-analytics-audit как CsvPage."
-      />
-    );
-  }
+  if (matchPath('/csv', path)) return <UnavailablePage title="CSV" />;
 
-  if (matchPath('/analytics', path)) {
-    return (
-      <ModulePlaceholder
-        title="Аналитика"
-        owner="Сергей"
-        description="Сводка по всей базе и группировки подключаются как AnalyticsPage; маршрут и меню уже готовы."
-      />
-    );
-  }
+  if (matchPath('/analytics', path)) return <UnavailablePage title="Аналитика" />;
 
   if (matchPath('/audit', path)) {
     if (!isAdmin(user)) return <Redirect to="/orders" />;
-    return (
-      <ModulePlaceholder
-        title="Журнал аудита"
-        owner="Сергей"
-        description="Поиск, сортировка и страницы аудита подключаются как AuditPage; доступен только ADMIN."
-      />
-    );
+    return <UnavailablePage title="Аудит" />;
   }
 
   return <NotFoundPage />;
@@ -159,7 +132,10 @@ function AppHeader({ user, location }: { user: Account | null; location: string 
   return (
     <header className="app-header">
       <div className="app-header__inner">
-        <a className="brand" {...linkProps('/orders')}>youDO</a>
+        <a className="brand" {...linkProps('/orders')}>
+          <span className="brand-mark" aria-hidden="true">y</span>
+          youDO
+        </a>
         <nav aria-label="Основная навигация">
           <ul className="nav-list">
             {items.map(item => {

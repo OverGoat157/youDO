@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { linkProps } from '../../app/router';
 import { ApiRequestError } from '../../api/client';
-import { canEdit, isAdmin, type Account } from '../../api/session';
+import { canEdit, type Account } from '../../api/session';
 import { archivedFilterLabel } from './labels';
 import {
   bulkOrders, exportOrders, listCategories, listOrders,
@@ -11,7 +11,7 @@ import {
   normalizeTags, type BulkResult, type Category, type OrderFilter, type OrderResponse,
   type OrderStatus, type Page, type SortDirection, type SortField,
 } from './types';
-import { ArchivedBadge, Pager, PriorityBadge, StatusBadge } from './components';
+import { Pager, PriorityBadge, StatusBadge } from './components';
 import './orders.css';
 
 export interface OrdersPageProps {
@@ -22,7 +22,6 @@ const SORTABLE: Array<{ field: SortField; label: string }> = [
   { field: 'title', label: 'Название' },
   { field: 'budget', label: 'Бюджет' },
   { field: 'deadline', label: 'Дедлайн' },
-  { field: 'createdAt', label: 'Создан' },
 ];
 
 type BulkKind = 'ARCHIVE' | 'RESTORE' | 'CHANGE_STATUS' | 'ADD_TAG' | 'REMOVE_TAG';
@@ -60,7 +59,6 @@ export function OrdersPage({ user }: OrdersPageProps) {
   const [exportBusy, setExportBusy] = useState(false);
   const exportRef = useRef<HTMLButtonElement>(null);
   const editable = canEdit(user);
-  const admin = isAdmin(user);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -77,7 +75,7 @@ export function OrdersPage({ user }: OrdersPageProps) {
     listOrders({ ...filter, page, size, sortField, sortDirection }, controller.signal)
       .then(data => {
         setResult(data);
-        // Выбор переживает обновление только для строк, которые всё ещё видны с той же версией.
+
         setSelection(previous => {
           if (previous.size === 0) return previous;
           const next = new Map<string, number>();
@@ -156,14 +154,10 @@ export function OrdersPage({ user }: OrdersPageProps) {
       setNotice({ kind: 'success', text: 'Экспорт текущих условий скачан.' });
     } catch (cause) {
       const api = cause as ApiRequestError;
-      if (api.status === 404) {
-        setNotice({
-          kind: 'info',
-          text: 'Модуль экспорта CSV ещё не подключён к backend. Кнопка отправляет текущие фильтры и сортировку без ограничения страницей.',
-        });
-      } else {
-        setNotice({ kind: 'error', text: api.message || 'Не удалось выгрузить CSV.' });
-      }
+      setNotice({
+        kind: 'error',
+        text: api.status === 404 ? 'Экспорт сейчас недоступен.' : api.message || 'Не удалось выгрузить CSV.',
+      });
     } finally {
       setExportBusy(false);
       requestAnimationFrame(() => exportRef.current?.focus());
@@ -213,7 +207,7 @@ export function OrdersPage({ user }: OrdersPageProps) {
       <header className="page-header">
         <div>
           <h1 id="orders-title">Заказы</h1>
-          <p className="muted">Поиск, фильтры, сортировка и страницы выполняются на сервере</p>
+          <p className="muted">Заказы биржи: поиск, фильтры и сортировка</p>
         </div>
         <div className="actions">
           <button type="button" className="button--secondary" onClick={() => setRevision(value => value + 1)} disabled={loading}>Обновить</button>
@@ -276,7 +270,7 @@ export function OrdersPage({ user }: OrdersPageProps) {
           </div>
           <div className="field">
             <label htmlFor="filter-tag">Тег</label>
-            <input id="filter-tag" value={draft.tag} maxLength={50} placeholder="например, backend"
+            <input id="filter-tag" value={draft.tag} maxLength={50} placeholder="например, лендинг"
               onChange={event => setDraft({ ...draft, tag: event.target.value })} />
           </div>
           <div className="field">
@@ -289,19 +283,15 @@ export function OrdersPage({ user }: OrdersPageProps) {
             </select>
           </div>
           <div className="field field--budget">
-            <label htmlFor="filter-budget-op">Бюджет</label>
-            <div className="budget-row">
-              <select id="filter-budget-op" aria-label="Сравнение бюджета" value={draft.budgetOp}
-                onChange={event => setDraft({ ...draft, budgetOp: event.target.value as OrderFilter['budgetOp'] })}>
-                <option value="">без сравнения</option>
-                <option value="eq">равен</option>
-                <option value="gt">больше</option>
-                <option value="gte">не меньше</option>
-                <option value="lt">меньше</option>
-                <option value="lte">не больше</option>
-              </select>
-              <input id="filter-budget" aria-label="Значение бюджета" inputMode="decimal" value={draft.budgetValue}
-                placeholder="0.00" onChange={event => setDraft({ ...draft, budgetValue: event.target.value })} />
+            <label htmlFor="filter-budget-from">Бюджет, ₽</label>
+            <div className="budget-range">
+              <input id="filter-budget-from" inputMode="decimal" placeholder="от" aria-label="Бюджет от"
+                value={draft.budgetFrom}
+                onChange={event => setDraft({ ...draft, budgetFrom: event.target.value })} />
+              <span className="budget-dash" aria-hidden="true">—</span>
+              <input id="filter-budget-to" inputMode="decimal" placeholder="до" aria-label="Бюджет до"
+                value={draft.budgetTo}
+                onChange={event => setDraft({ ...draft, budgetTo: event.target.value })} />
             </div>
           </div>
         </div>
@@ -402,8 +392,7 @@ export function OrdersPage({ user }: OrdersPageProps) {
                   <th scope="col">Категория</th>
                   <th scope="col">Статус</th>
                   <th scope="col">Заказчик / исполнитель</th>
-                  <th scope="col">Срочность, приоритет</th>
-                  <th scope="col">Архив</th>
+                  <th scope="col">Приоритет</th>
                 </tr>
               </thead>
               <tbody>
@@ -416,24 +405,27 @@ export function OrdersPage({ user }: OrdersPageProps) {
                           onChange={event => toggleRow(order, event.target.checked)} />
                       </td>
                     )}
-                    <td>
-                      <a {...linkProps(`/orders/${order.id}`)}><strong>{order.title}</strong></a>
-                      <div className="muted mono">{order.code}</div>
+                    <td className="cell-title">
+                      <a className="title-link" {...linkProps(`/orders/${order.id}`)}>{order.title}</a>
+                      <div className="subline">
+                        <span className="mono">{order.code}</span>
+                        {order.archived && <span className="badge badge--inactive">В архиве</span>}
+                      </div>
                     </td>
                     <td className="nowrap">{formatBudget(order.budget)}</td>
                     <td className="nowrap">{formatDeadline(order.deadline)}</td>
-                    <td>{formatDeadline(order.createdAt?.slice(0, 10))}</td>
                     <td>{order.categoryName ?? '—'}</td>
-                    <td><StatusBadge status={order.status} /></td>
+                    <td className="nowrap"><StatusBadge status={order.status} /></td>
                     <td>
-                      {order.customerName}
-                      <div className="muted">{order.freelancerName ?? 'исполнитель не назначен'}</div>
+                      <div className="nowrap">{order.customerName}</div>
+                      <div className="muted small">{order.freelancerName ?? 'исполнитель не назначен'}</div>
                     </td>
                     <td>
-                      {order.urgent && <span className="badge badge--overdue">Срочный</span>}
-                      <PriorityBadge priority={order.priority} />
+                      <div className="priority-cell">
+                        <PriorityBadge priority={order.priority} />
+                        {order.urgent && <span className="badge badge--overdue">Срочный</span>}
+                      </div>
                     </td>
-                    <td><ArchivedBadge archived={order.archived} /></td>
                   </tr>
                 ))}
               </tbody>
@@ -450,15 +442,10 @@ export function OrdersPage({ user }: OrdersPageProps) {
               onSize={value => { setSize(value); setPage(0); }}
             />
           )}
-          {admin && <p className="muted small">Полное удаление доступно администратору в карточке заказа при включённой настройке сервера.</p>}
           <p className="visually-hidden" aria-live="polite">{selection.size > 0 ? `Выбрано заказов: ${selection.size}` : ''}</p>
         </>
       )}
 
-      <p className="muted small">
-        Сортировка и страницы относятся ко всему найденному набору, а не к текущей странице.
-        Кнопка «Обновить» сохраняет условия поиска.
-      </p>
     </main>
   );
 }

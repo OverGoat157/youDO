@@ -28,7 +28,6 @@ export interface PagerProps {
   onSize: (size: number) => void;
 }
 
-/** Серверная пагинация: страницы и размер меняются запросом, а не фильтрацией массива в браузере. */
 export function Pager({ page, totalPages, totalElements, size, disabled, onPage, onSize }: PagerProps) {
   const lastPage = Math.max(1, totalPages);
   return (
@@ -57,7 +56,6 @@ export interface ConfirmDialogProps {
   onCancel: () => void;
 }
 
-/** Подтверждение опасного действия: фокус на заголовке, Esc отменяет. */
 export function ConfirmDialog({ open, title, description, confirmLabel, danger, busy, onConfirm, onCancel }: ConfirmDialogProps) {
   const heading = useRef<HTMLHeadingElement>(null);
   const cancel = useRef<HTMLButtonElement>(null);

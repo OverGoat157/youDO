@@ -38,6 +38,16 @@ export function ForbiddenPage({ message }: { message?: string }) {
   );
 }
 
+export function UnavailablePage({ title }: { title: string }) {
+  return (
+    <main className="page" aria-labelledby="unavailable-title">
+      <h1 id="unavailable-title">{title}</h1>
+      <p className="muted">Раздел пока недоступен.</p>
+      <p><a href="/orders" onClick={event => { event.preventDefault(); navigate('/orders'); }}>Перейти к заказам</a></p>
+    </main>
+  );
+}
+
 export function NotFoundPage() {
   return (
     <main className="page" aria-labelledby="not-found-title">
@@ -48,31 +58,3 @@ export function NotFoundPage() {
   );
 }
 
-export interface ModulePlaceholderProps {
-  title: string;
-  owner: string;
-  description: string;
-}
-
-/**
- * Заглушка для экранов, которые подключаются владельцами модулей.
- * Ангелина держит router: страница заменяется одним компонентом без правок навигации.
- */
-export function ModulePlaceholder({ title, owner, description }: ModulePlaceholderProps) {
-  return (
-    <main className="page" aria-labelledby="module-title">
-      <header className="page-header">
-        <div>
-          <h1 id="module-title">{title}</h1>
-          <p className="muted">Модуль подключается в этот маршрут</p>
-        </div>
-      </header>
-      <section className="card">
-        <p>{description}</p>
-        <p className="muted">Владелец модуля: {owner}. API и экран появляются в его ветке; маршрут и навигация уже готовы.</p>
-      </section>
-    </main>
-  );
-}
-
-/** Уведомление о результате действия, которое можно закрыть. */

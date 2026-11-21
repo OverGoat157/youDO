@@ -1,16 +1,3 @@
-/**
- * Общий HTTP-клиент youDO.
- *
- * Правила из договора PLAN3:
- *  - access JWT хранится только в памяти этого модуля, refresh — HttpOnly cookie браузера;
- *  - при 401 выполняется ровно один общий refresh на все одновременные запросы,
- *    исходный запрос повторяется не более одного раза;
- *  - 403 refresh не запускает;
- *  - неуспешный refresh завершает сессию;
- *  - 204 возвращает undefined, тело ответа — распарсенный JSON;
- *  - ошибка приводится к {status, code, message, fieldErrors, correlationId}.
- */
-
 export interface FieldError {
   field: string;
   message: string;
@@ -53,17 +40,14 @@ export function getAccessToken(): string | null {
   return accessToken;
 }
 
-/** Обработчик общего refresh. Возвращает новый access либо null, если refresh не удался. */
 export function setRefreshHandler(handler: (() => Promise<string | null>) | null): void {
   refreshHandler = handler;
 }
 
-/** Вызывается, когда сессия завершена сервером (refresh не удался). */
 export function setSessionExpiredHandler(handler: () => void): void {
   expiredHandler = handler;
 }
 
-/** Вызывается при 403 с кодом PASSWORD_CHANGE_REQUIRED. */
 export function setPasswordChangeRequiredHandler(handler: () => void): void {
   passwordChangeHandler = handler;
 }
@@ -85,10 +69,6 @@ function buildHeaders(init?: RequestInit): Headers {
   return headers;
 }
 
-/**
- * Повтор возможен, если запрос идемпотентен по телу: строка JSON или отсутствие тела.
- * Поток/FormData повторно не отправляем, чтобы не потерять данные файла.
- */
 function canReplay(method: string, body: BodyInit | null | undefined): boolean {
   const verb = method.toUpperCase();
   if (verb === 'GET' || verb === 'HEAD') return true;
@@ -209,7 +189,6 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   return (await parseBody(response)) as T;
 }
 
-/** Скачивание файла (CSV-экспорт текущих условий) с теми же правилами авторизации. */
 export async function apiDownload(path: string): Promise<{ blob: Blob; filename: string | null }> {
   const sendOnce = () => send(path, { method: 'GET', headers: { Accept: 'text/csv, application/json' } });
   let response: Response;
