@@ -1,0 +1,19 @@
+.csv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.csv-grid .card { margin: 0; }
+.csv-grid .actions { margin-top: 1rem; }
+.csv-modes { border: 0; padding: 0; margin: .75rem 0 0; }
+.csv-modes legend { font-size: .85rem; font-weight: 600; color: var(--yd-muted); margin-bottom: .25rem; }
+.app-content .csv-mode { display: flex; align-items: center; gap: .5rem; margin: .3rem 0; font-weight: 400; color: var(--yd-ink); }
+.csv-preview { margin-bottom: 1rem; }
+.csv-stats { display: flex; flex-wrap: wrap; gap: .75rem 2rem; margin: 0 0 1rem; }
+.csv-stats dt { font-size: .8rem; color: var(--yd-muted); }
+.csv-stats dd { margin: 0; font-size: 1.4rem; font-weight: 650; }
+.csv-issues { max-height: 22rem; overflow-y: auto; margin-bottom: .75rem; }
+.app-content .csv-issues > table { min-width: 0; }
+.csv-format summary { cursor: pointer; font-weight: 600; }
+.csv-format table { margin-top: .5rem; }

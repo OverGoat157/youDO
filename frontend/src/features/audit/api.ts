@@ -53,6 +53,7 @@ export const ACTION_LABELS: Record<string, string> = {
   ORDER_NOTE_CREATED: 'Добавлена заметка',
   ORDER_NOTE_UPDATED: 'Изменена заметка',
   ORDER_NOTE_DELETED: 'Удалена заметка',
+  ORDER_CSV_IMPORTED: 'Импорт CSV',
 };
 
 export const ENTITY_LABELS: Record<string, string> = {
