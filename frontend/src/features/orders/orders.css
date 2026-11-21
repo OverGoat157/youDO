@@ -1,0 +1,77 @@
+/* Локальные стили экранов заказов; общие классы приходят из styles/global.css. */
+.filters { margin-bottom: 1.25rem; }
+.filters-grid, .form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: .25rem 1rem;
+}
+.filters-grid .field, .form-grid .field { margin: 0; }
+.field--wide { grid-column: 1 / -1; }
+.field--budget { grid-column: span 2; min-width: 0; }
+.budget-row { display: flex; gap: .5rem; }
+.budget-row select { flex: 0 0 45%; }
+.budget-row input { flex: 1 1 auto; min-width: 0; }
+.field-error { color: var(--danger); font-weight: 600; margin: .25rem 0 0; }
+.field--invalid input, .field--invalid select, .field--invalid textarea { border: 2px solid var(--danger); }
+.sort-button {
+  background: none; border: 0; padding: 0; min-height: 0; color: var(--ink);
+  font-weight: 650; text-align: left; display: inline-flex; gap: .25rem;
+}
+.sort-button:hover:not(:disabled) { background: none; text-decoration: underline; }
+.cell-select { width: 2.5rem; }
+.cell-select input { width: 1.15rem; height: 1.15rem; accent-color: var(--primary); }
+.row-selected td { background: #f1f6ff; }
+.nowrap { white-space: nowrap; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .92em; }
+.small { font-size: .88rem; }
+.badges { display: flex; gap: .35rem; flex-wrap: wrap; align-items: center; margin: .5rem 0; }
+.pager-size { display: inline-flex; align-items: center; gap: .4rem; font-weight: 600; }
+.pager-size select { width: auto; min-width: 5rem; }
+.bulk-panel { margin: 1.25rem 0; }
+.bulk-panel h2 { font-size: 1.1rem; margin-bottom: .5rem; }
+.bulk-row { align-items: flex-end; }
+.bulk-row .field { min-width: 12rem; margin: 0; }
+.bulk-result { margin-top: .75rem; }
+.bulk-result ul { margin: .25rem 0 0; padding-left: 1.2rem; }
+.breadcrumbs { color: var(--muted); font-size: .92rem; margin: 0 0 .5rem; }
+.card--details { margin-bottom: 1.5rem; }
+.details-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 1rem; margin: 0 0 1.5rem; }
+.details-grid dt { color: var(--muted); font-size: .85rem; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+.details-grid dd { margin: .15rem 0 0; font-weight: 600; }
+.preserve-lines { white-space: pre-wrap; overflow-wrap: anywhere; }
+.notes { margin-bottom: 1.5rem; }
+.note-list { list-style: none; margin: 0 0 1.5rem; padding: 0; display: grid; gap: .75rem; }
+.note { border: 1px solid var(--border); border-radius: .6rem; padding: 1rem; background: #fbfcfe; }
+.note--pinned { border-color: #c9a227; background: #fffcf0; }
+.note-header { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; margin-bottom: .35rem; }
+.note p { margin: 0 0 .5rem; }
+.note-editor textarea { margin-bottom: .5rem; }
+.note-form { border-top: 1px solid var(--border); padding-top: 1rem; }
+.dialog-backdrop {
+  position: fixed; inset: 0; background: #10233f66; display: grid; place-items: center;
+  padding: 1rem; z-index: 100;
+}
+.dialog { width: 100%; max-width: 560px; }
+.dialog h2 { font-size: 1.25rem; }
+.participant-picker { position: relative; }
+.participant-search { position: relative; }
+.participant-options {
+  position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + .25rem);
+  background: #fff; border: 1px solid var(--border-strong); border-radius: .5rem;
+  box-shadow: 0 10px 24px #172b4d22; padding: .35rem; max-height: 15rem; overflow-y: auto;
+}
+.participant-options button {
+  display: block; width: 100%; text-align: left; background: none; color: var(--ink);
+  border: 0; padding: .5rem .6rem; min-height: 0; font-weight: 500;
+}
+.participant-options button:hover:not(:disabled) { background: var(--canvas); }
+.participant-options p { margin: .35rem .5rem; }
+.participant-selected { display: flex; gap: .75rem; align-items: center; justify-content: space-between; border: 1px solid var(--border); border-radius: .45rem; padding: .5rem .75rem; background: var(--canvas); }
+.participant-selected button { min-height: 36px; padding: .3rem .7rem; }
+.order-form .check-label.field { align-self: end; }
+.notice-close { margin-top: .5rem; }
+@media (max-width: 700px) {
+  .field--budget { grid-column: 1 / -1; }
+  .budget-row { flex-direction: column; }
+  .budget-row select { flex: 1 1 auto; }
+}
