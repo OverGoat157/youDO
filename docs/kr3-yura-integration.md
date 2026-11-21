@@ -1,7 +1,7 @@
 # КР №3: часть Юры — аккаунты, категории и пользовательские страницы
 
 Аккаунты и категории работают в общем Spring Boot-модуле. В ветке проверки
-`codex/yura-readiness` подключён React-каркас из `origin/feature/kr3-orders-web`
+`feature/kr3-users-fixes` подключён React-каркас из `origin/feature/kr3-orders-web`
 (`12b3d8f`), содержащий router и session store Ангелины. Страницы Юры работают
 в общем приложении. В `origin/main` на момент проверки этого каркаса ещё нет.
 
