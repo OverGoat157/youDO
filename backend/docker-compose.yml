@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: ${DB_NAME:-youdo_backend}
       POSTGRES_USER: ${DB_USER:-youdo_backend}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?Generate backend/.env first}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Run python3 backend/scripts/setup_env.py first}
     ports:
       - "127.0.0.1:${DB_PORT:-55433}:5432"
     volumes:
@@ -23,8 +23,8 @@ services:
     environment:
       DB_URL: jdbc:postgresql://db:5432/${DB_NAME:-youdo_backend}
       DB_USER: ${DB_USER:-youdo_backend}
-      DB_PASSWORD: ${DB_PASSWORD:?Generate backend/.env first}
-      JWT_SECRET: ${JWT_SECRET:?Generate backend/.env first}
+      DB_PASSWORD: ${DB_PASSWORD:?Run python3 backend/scripts/setup_env.py first}
+      JWT_SECRET: ${JWT_SECRET:?Run python3 backend/scripts/setup_env.py first}
       BOOTSTRAP_ADMIN_LOGIN: ${BOOTSTRAP_ADMIN_LOGIN:-}
       BOOTSTRAP_ADMIN_NAME: ${BOOTSTRAP_ADMIN_NAME:-Администратор}
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}

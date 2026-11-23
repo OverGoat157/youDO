@@ -160,6 +160,7 @@ function AppHeader({ user, location }: { user: Account | null; location: string 
         </nav>
         <div className="app-user">
           {user && <span className="muted small">{user.name} · {user.login}</span>}
+          {user && <a className="nav-link" {...linkProps('/change-password')}>Сменить пароль</a>}
           <button type="button" className="button--secondary"
             onClick={async () => { await session.logout(); navigate('/login', { replace: true }); }}>
             Выйти

@@ -3,7 +3,7 @@
 JavaFX продолжает работать с прежней БД. Backend использует отдельную БД и volume. Никогда не запускайте старые sql/schema.sql и sql/seed.sql поверх нужных данных: они удаляют/очищают таблицы. Flyway V1 берёт только CREATE TABLE из прежней схемы.
 
 1. Запустите backend по README, чтобы Flyway создал новую схему. Таблицы users/orders в новой БД должны быть пустыми. Bootstrap-аккаунт не мешает переносу. Импорт выполняйте до начала работы через новый API.
-2. Узнайте имена контейнеров: `docker compose ps` для КР №2 и `docker compose --env-file backend/.env -f backend/docker-compose.yml ps` для КР №3. Контейнеры PostgreSQL должны предоставлять POSTGRES_USER/POSTGRES_DB; скрипт запускает psql внутри контейнера без передачи пароля в аргументах процесса.
+2. Узнайте имена контейнеров: `docker compose ps` для КР №2 и `docker compose --env-file .env -f backend/docker-compose.yml ps` для КР №3. Контейнеры PostgreSQL должны предоставлять POSTGRES_USER/POSTGRES_DB; скрипт запускает psql внутри контейнера без передачи пароля в аргументах процесса.
 3. Создайте локальный снимок:
 
 ```sh

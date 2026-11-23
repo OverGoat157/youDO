@@ -10,19 +10,22 @@ React раздаётся сервером на том же origin. JavaFX КР �
 для локальной сборки frontend — Node.js 22. Из корня репозитория:
 
 ```sh
-python3 backend/scripts/setup_env.py  # только первый запуск; существующий .env не меняется
-docker compose --env-file backend/.env -f backend/docker-compose.yml up -d --build --wait
-docker compose --env-file backend/.env -f backend/docker-compose.yml ps
+python3 backend/scripts/setup_env.py  # подготовка корневого .env, существующие значения сохраняются
+docker compose --env-file .env -f backend/docker-compose.yml up -d --build --wait
+docker compose --env-file .env -f backend/docker-compose.yml ps
 ```
 
 Открыть `http://localhost:8080/`, health — `/actuator/health`. Первый вход:
-`admin@youdo.local`, временный пароль из локального `backend/.env`; сервер потребует
+`admin@youdo.local`, временный пароль из локального `.env`; сервер потребует
 сменить его. После смены используйте новый пароль: повторный запуск не сбрасывает аккаунт.
-Секреты, дампы и `.env` в Git не добавляются; шаблон — `backend/.env.example`.
+Секреты, дампы и `.env` в Git не добавляются; шаблон — `.env.example`.
+Генератор сохраняет настройки КР №2 и переносит недостающие параметры КР №3 из
+прежнего `backend/.env`, если он есть. Повторный запуск не меняет настроенные значения.
 При другом HTTP_PORT укажите соответствующий ALLOWED_ORIGINS.
 
 VIEWER читает и экспортирует; EDITOR также изменяет заказы/заметки и импортирует CSV;
 ADMIN управляет аккаунтами/категориями, читает аудит и документацию API.
+Ссылка **Сменить пароль** в шапке доступна каждой роли после входа.
 Swagger открывается кнопкой **API** после входа администратора: схема и ресурсы
 загружаются с его Bearer, доступ остальным закрыт. Прямые `/swagger-ui.html` и
 `/v3/api-docs` также доступны ADMIN с заголовком Authorization.
@@ -30,9 +33,29 @@ Swagger открывается кнопкой **API** после входа ад
 Flyway создаёт схему, Hibernate использует `validate`. Backend хранит данные в
 отдельном volume `youdo-kr3_backend_data`; прежняя база JavaFX не меняется.
 Участники биржи из `users` и аккаунты входа — разные сущности.
-[Перенос данных КР №1–2](backend/migration.md). Для новой отдельной демонстрационной
-базы можно добавить двух участников из `backend/scripts/demo_participants.sql`.
+[Перенос данных КР №1–2](backend/migration.md). На чистой базе перед созданием
+заказов нужны участники биржи: обязательного заказчика нельзя заменить аккаунтом входа.
+Если прежнюю базу не переносите, для отдельной демонстрационной базы выполните:
+
+```sh
+docker compose --env-file .env -f backend/docker-compose.yml exec -T db \
+  sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
+  < backend/scripts/demo_participants.sql
+```
+
+Скрипт добавляет заказчика `anna@mail.ru` и исполнителя `dmitry@mail.ru`, которых
+используют примеры CSV; существующие записи не меняет.
 Старые `sql/schema.sql`/`sql/seed.sql` поверх серверной БД не запускаются.
+
+Для показа окончательного удаления на отдельном демонстрационном стенде установите
+в корневом `.env` `PERMANENT_DELETE_ENABLED=true` и примените настройку:
+
+```sh
+docker compose --env-file .env -f backend/docker-compose.yml up -d --no-deps --wait backend
+```
+
+Удалять навсегда может только ADMIN и только архивный заказ. По умолчанию настройка
+выключена. Полная последовательность показа — в [сценарии защиты](docs/kr3-demo.md).
 
 CSV: UTF-8 с BOM, `;`, колонка `categoryCode`, участники по email, теги через `|`.
 NEW_ONLY и UPSERT_BY_CODE, до 5 MiB/10 000 строк. Сначала исправляются **все** ошибки
@@ -55,7 +78,7 @@ npm --prefix frontend run build
 Остановка сохраняет данные:
 
 ```sh
-docker compose --env-file backend/.env -f backend/docker-compose.yml down
+docker compose --env-file .env -f backend/docker-compose.yml down
 ```
 
 - [Подробный запуск, авторизация и конфигурация](backend/README.md)
@@ -203,4 +226,6 @@ FXML / CSS → Controller → Service → Repository → JDBC → PostgreSQL
 | Сергей | Статистика, экспорт, документация |
 | Юра | Пользователи, формы и общий CSS |
 
-Демонстрационный архив преподавателя пока не предоставлен. Его Docker/backend/REST-клиент не проверены; собственный PostgreSQL для youDO эту обязательную часть задания не заменяет.
+Исторический статус отдельного примера преподавателя для КР №2 сохранён в
+[docs/docker-demo.md](docs/docker-demo.md). Готовность собственного backend и React
+для КР №3 описана в начале этого README и в [итоговом протоколе](docs/kr3-verification.md).

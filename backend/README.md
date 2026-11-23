@@ -8,18 +8,23 @@
 
 ```sh
 python3 backend/scripts/setup_env.py
-docker compose --env-file backend/.env -f backend/docker-compose.yml up -d --build --wait
-docker compose --env-file backend/.env -f backend/docker-compose.yml ps
-docker compose --env-file backend/.env -f backend/docker-compose.yml down
+docker compose --env-file .env -f backend/docker-compose.yml up -d --build --wait
+docker compose --env-file .env -f backend/docker-compose.yml ps
+docker compose --env-file .env -f backend/docker-compose.yml down
 ```
 
-Генератор создаёт `.env` с правами 0600 и случайными секретами; существующий файл не меняет. Временный пароль `admin@youdo.local` смотрите в локальном `backend/.env`. Он не выводится скриптом. При первом входе требуется смена пароля. Перезапуск не меняет существующий аккаунт. После создания администратора переменную `BOOTSTRAP_ADMIN_PASSWORD` можно очистить. Не добавляйте `.env` и snapshot в Git.
+Генератор создаёт корневой `.env` с правами 0600 и случайными секретами либо дополняет существующий файл недостающими параметрами. Настроенные значения КР №2 и КР №3 сохраняются. При переходе со старого расположения недостающие значения берутся из `backend/.env`; этот файл остаётся локальной резервной копией, текущие команды используют корневой `.env`. Повторный запуск не меняет настроенный файл. Шаблон — корневой `.env.example`. Временный пароль `admin@youdo.local` смотрите в локальном `.env`. Он не выводится скриптом. При первом входе требуется смена пароля; затем её можно открыть по ссылке «Сменить пароль» в шапке. Перезапуск не меняет существующий аккаунт. После создания администратора переменную `BOOTSTRAP_ADMIN_PASSWORD` можно очистить. Не добавляйте `.env` и snapshot в Git.
 
 Backend/web: `http://localhost:8080/`; health: `/actuator/health`; PostgreSQL: `127.0.0.1:55433`, база `youdo_backend`. Compose-проект `youdo-kr3` и volume `youdo-kr3_backend_data` отделены от `youdo-kr2`. `down` сохраняет данные. При изменении HTTP_PORT добавьте фактический origin в ALLOWED_ORIGINS. За reverse proxy настраивайте отдельное доверие к proxy: сейчас X-Forwarded-For игнорируется, лимит использует адрес непосредственного соединения.
 
+На чистой базе сначала перенесите участников КР №1–2 по [migration.md](migration.md)
+либо подготовьте отдельную демонстрационную базу командами [README](../README.md).
+Без заказчика создать заказ нельзя; аккаунты входа и участники биржи — разные таблицы.
+Там же описано включение постоянного удаления для показа на защите.
+
 Docker собирает `frontend/` через `npm ci && npm run build`; готовый React попадает внутрь JAR и доступен на одном origin с API. Runtime работает от UID 10001. В образе используется Java 21 из Maven-образа, поэтому для уменьшения размера позже можно заменить runtime на JRE с curl.
 
-Для запуска без Docker нужны Java 21, Maven 3.9+ и отдельная PostgreSQL 16. Передайте DB_URL, DB_USER, DB_PASSWORD, JWT_SECRET и при необходимости bootstrap-переменные в окружении, затем `mvn -f backend/pom.xml spring-boot:run`. Spring сам не читает `backend/.env`; Compose передаёт значения явно. Hibernate только проверяет схему (`validate`), SQL выполняет Flyway.
+Для запуска без Docker нужны Java 21, Maven 3.9+ и отдельная PostgreSQL 16. Передайте DB_URL, DB_USER, DB_PASSWORD, JWT_SECRET и при необходимости bootstrap-переменные в окружении, затем `mvn -f backend/pom.xml spring-boot:run`. Spring сам не читает `.env`; Compose передаёт значения явно. Hibernate только проверяет схему (`validate`), SQL выполняет Flyway.
 
 ## Авторизация и API
 

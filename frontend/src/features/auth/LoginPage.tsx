@@ -1,5 +1,6 @@
 import { useState, useRef, type FormEvent } from 'react';
 import { FormError } from './FormError';
+import { PasswordField } from './PasswordField';
 import type { ApiError, AuthSession } from './contracts';
 
 export interface LoginPageProps { session: AuthSession; navigate: (path: string) => void }
@@ -24,7 +25,8 @@ export function LoginPage({ session, navigate }: LoginPageProps) {
     <FormError error={error} login />
     <form onSubmit={submit} aria-busy={busy}>
       <label htmlFor="login">Email</label><input id="login" type="email" autoComplete="username" required maxLength={150} value={login} onChange={e => setLogin(e.target.value)} disabled={busy} />
-      <label htmlFor="password">Пароль</label><input id="password" type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} disabled={busy} />
+      <PasswordField id="password" label="Пароль" autoComplete="current-password" required
+        value={password} onChange={e => setPassword(e.target.value)} disabled={busy} />
       <button type="submit" disabled={busy}>{busy ? 'Входим…' : 'Войти'}</button>
     </form>
   </section></main>;
